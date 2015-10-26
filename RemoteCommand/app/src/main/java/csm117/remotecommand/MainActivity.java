@@ -1,37 +1,44 @@
 package csm117.remotecommand;
 
+import android.graphics.Color;
 import android.os.Bundle;
-import android.support.design.widget.FloatingActionButton;
-import android.support.design.widget.Snackbar;
+import android.support.v4.view.ViewPager;
 import android.support.v7.app.AppCompatActivity;
-import android.support.v7.widget.Toolbar;
-import android.view.View;
 import android.view.Menu;
 import android.view.MenuItem;
 
+import java.util.ArrayList;
+import java.util.List;
+
+import csm117.remotecommand.command.CommandsFragment;
+import csm117.remotecommand.network.DiscoveryFragment;
+
 public class MainActivity extends AppCompatActivity {
+    ViewPager mViewPager;
+    ViewPagerAdapter mViewPagerAdapter;
+    Menu mMenu;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-        Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
-        setSupportActionBar(toolbar);
 
-        FloatingActionButton fab = (FloatingActionButton) findViewById(R.id.fab);
-        fab.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                Snackbar.make(view, "Replace with your own action", Snackbar.LENGTH_LONG)
-                        .setAction("Action", null).show();
-            }
-        });
+        //add more fragment pages
+        List<ViewPagerAdapter.FragmentHolder> fragmentHolders = new ArrayList<>();
+        fragmentHolders.add(new ViewPagerAdapter.FragmentHolder("Commands", new CommandsFragment()));
+        fragmentHolders.add(new ViewPagerAdapter.FragmentHolder("Devices", new DiscoveryFragment()));
+
+        mViewPagerAdapter = new ViewPagerAdapter(getSupportFragmentManager(), fragmentHolders);
+        mViewPager = (ViewPager) findViewById(R.id.pager);
+        mViewPager.setAdapter(mViewPagerAdapter);
+
+        FixedTabViewer.init(this, mViewPager, mViewPagerAdapter, 17, 3, 40, 1, Color.parseColor("#00001f"), Color.TRANSPARENT);
     }
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
+        mMenu = menu;
         // Inflate the menu; this adds items to the action bar if it is present.
-        getMenuInflater().inflate(R.menu.menu_main, menu);
         return true;
     }
 
@@ -41,12 +48,20 @@ public class MainActivity extends AppCompatActivity {
         // automatically handle clicks on the Home/Up button, so long
         // as you specify a parent activity in AndroidManifest.xml.
         int id = item.getItemId();
-
-        //noinspection SimplifiableIfStatement
-        if (id == R.id.action_settings) {
-            return true;
+        switch (id) {
+            case R.id.action_settings:
+                //TODO
+                return true;
         }
 
         return super.onOptionsItemSelected(item);
+    }
+
+    @Override
+    public void onBackPressed() {
+        if (getSupportFragmentManager().getBackStackEntryCount() == 0)
+            super.onBackPressed();
+        else
+            getSupportFragmentManager().popBackStack();
     }
 }
