@@ -13,24 +13,31 @@
 #include <errno.h>
 #include <string.h>
 
-const int BUFLEN = 1024;
-const int NUMOPT = 16;
+#define BUFLEN 1024
+#define NUMOPT 16
 
-const char BAD_REQUEST_TEMPLATE = "Error: Bad Request.\n";
-const char UPDATED_TEMPLATE = "Option %d updated to version %d.\n";
-const char BAD_METHOD_TEMPLATE = "Method %s is not supported.\n";
-const char NOT_UPDATED_TEMPLATE = "Option %d is not updated.\n";
-const char USER_OK_TEMPLATE = "Password:\n";
-const char USER_BAD_TEMPLATE = "Error: Bad User.\n";
+const char * BAD_REQUEST_TEMPLATE = "Error: Syntax Error. [USER/PASS/LOGOUT/OPTION/UPDATE] [Opt#/0] [Ver#/0] [Text/.] [(Random Int)Serial#]\n";
+const char * UPDATED_TEMPLATE = "Option %d updated to version %d.\n";
+const char * BAD_METHOD_TEMPLATE = "Method %s is not supported.\n";
+const char * NOT_UPDATED_TEMPLATE = "Option %d is not updated.\n";
+const char * USER_OK_TEMPLATE = "Password:\n";
+const char * USER_BAD_TEMPLATE = "Error: Bad Credential.\n";
+const char * PASSWORD_OK_TEMPLATE = "You are logged in.\n";
 
-
-const char username = "CS117";
-const char password = "whothehellknows";
+const char * username = "CS117";
+const char * password = "whothehellknows";
 int auth = -1;
+int savedSerial = 0;
 
 char optionList[NUMOPT][BUFLEN];
 int optionValid[NUMOPT];
 int optionVersion[NUMOPT];
+
+void nextSerial()
+{
+	long long result = ((long long) savedSerial * 1103515245 + 12345) % 65535;
+	savedSerial = (int) result;
+}
 
 void cleanCache()
 {
@@ -48,7 +55,6 @@ void invalidateOptionList()
 	int i;
 	for(i=0; i<NUMOPT; i++)
 		optionValid[i] = 0;
-
 }
 
 void error(char *msg)
@@ -59,6 +65,7 @@ void error(char *msg)
 
 int run(int number)
 {
+	printf("%s\n",optionList[number]);
 	return 0;
 }
 
@@ -68,32 +75,33 @@ int processRequest(char* buffer, int sockfd)
 	int number;
 	int version;
 	char additional[BUFLEN];
+	int serial;
 	char response[BUFLEN]; //response message
 	memset(response, 0, BUFLEN);
 
    	int n;
-	n = sscanf(buffer, "%s %d %d",method, number, version);
-	if (n == EOF || n < 3){
+	n = sscanf(buffer, "%s %d %d %s %d",method, &number, &version, additional, &serial);
+	if (n == EOF || n < 5){
 		write (sockfd, BAD_REQUEST_TEMPLATE, strlen(BAD_REQUEST_TEMPLATE));
 		return -1;
 	}
 
 	// For debugging purposes
-	printf("Here are Headers:%s %s %s\n",method, path, protocol);
+	printf("Here are Headers:%s %d %d %s %d\n",method, number, version, additional, serial);
 
-	//Check the validity of request
-	//method field: cannot process any method other than UPDATE, OPTION.
+	// Check if the client is the last user.
+	if (auth > -1 && serial != savedSerial)
+	{
+		auth = -1;
+		return -1;
+	}
+
 	if (strcasecmp(method, "UPDATE") == 0)
 	{
-		n = sscanf(buffer, "%s %d %d %s",method, number, version, additional);
-		if (n == EOF || n < 4 || number >= NUMOPT){
-			write (sockfd, BAD_REQUEST_TEMPLATE, strlen(BAD_REQUEST_TEMPLATE));
-			return -1;
-		}
 		memset(optionList[number],0,BUFLEN);
-		snprintf(optionList[number], BUFLEN-1, additional);
-		optionValid = 1;
-		optionVersion = version;
+		strncpy(optionList[number], additional, BUFLEN-1);
+		optionValid[number] = 1;
+		optionVersion[number] = version;
 		snprintf(response, BUFLEN-1, UPDATED_TEMPLATE, number, version);
 		write (sockfd, response, strlen(response));
 		return 0;
@@ -106,19 +114,15 @@ int processRequest(char* buffer, int sockfd)
 		{
 			snprintf(response, BUFLEN-1, NOT_UPDATED_TEMPLATE, number);
 			write (sockfd, response, strlen(response));
-			return -1;
+			return 0;
 		}
 	}
 	else if (strcasecmp(method, "USER") == 0)
 	{
-		n = sscanf(buffer, "%s %d %d %s",method, number, version, additional);
-		if (n == EOF || n < 4 || number >= NUMOPT){
-			write (sockfd, BAD_REQUEST_TEMPLATE, strlen(BAD_REQUEST_TEMPLATE));
-			return -1;
-		}
 		if (strcmp(additional, username) == 0)
 		{
 			auth = 0;
+			savedSerial = serial;
 			write (sockfd, USER_OK_TEMPLATE, strlen(USER_OK_TEMPLATE));
 			return 0;
 		}
@@ -128,7 +132,28 @@ int processRequest(char* buffer, int sockfd)
 			write (sockfd, USER_BAD_TEMPLATE, strlen(USER_BAD_TEMPLATE));
 			return -1;
 		}
-	} 
+	}
+	else if (strcasecmp(method, "PASS") == 0)
+	{
+		if (strcmp(additional, password) == 0)
+		{
+			auth = 1;
+			savedSerial = serial;
+			write (sockfd, PASSWORD_OK_TEMPLATE, strlen(PASSWORD_OK_TEMPLATE));
+			return 0;
+		}
+		else
+		{
+			auth = -1;
+			write (sockfd, USER_BAD_TEMPLATE, strlen(USER_BAD_TEMPLATE));
+			return -1;
+		}
+	}
+	else if (strcasecmp(method, "LOGOUT") == 0)
+	{
+		auth = -1;
+		return -1;
+	}
 	else
 	{
 		snprintf (response, BUFLEN-1, BAD_METHOD_TEMPLATE, method);
@@ -153,7 +178,6 @@ int main(int argc, char *argv[])
 	memset((char *) &serv_addr, 0, sizeof(serv_addr));	//reset memory
 	//fill in address info
 	portno = atoi(argv[1]);
-	port = portno;
 	serv_addr.sin_family = AF_INET;
 	serv_addr.sin_addr.s_addr = INADDR_ANY;
 	serv_addr.sin_port = htons(portno);
@@ -178,21 +202,26 @@ int main(int argc, char *argv[])
 
 		memset(buffer, 0, BUFLEN);	//reset memory
 
-		//read client's message
-		n = recv(newsockfd,buffer,BUFLEN-1,0);
-		if (n < 0)
-			error("ERROR reading from socket");
-		printf("Here is the message: \n%s\n",buffer);
-		/*Null terminate the buffer so we can use string operations on it.*/
-		buffer[n] = '\0'; 
+		invalidateOptionList();
 
-		/*process request*/
-		n = processRequest(buffer, newsockfd);
-		/*process failed*/
-		if (n == -1) 
-			printf("Request was not successful.");
+		do{
+			//read client's message
+			n = recv(newsockfd,buffer,BUFLEN-1,0);
+			if (n < 0)
+				error("ERROR reading from socket");
+			printf("Here is the message: \n%s\n",buffer);
+			/*Null terminate the buffer so we can use string operations on it.*/
+			buffer[n] = '\0'; 
 
-		printf("\n---------------------next request--------------------\n");
+			/*process request*/
+			n = processRequest(buffer, newsockfd);
+			/*process failed*/
+			if (n == -1)
+				printf("Request was not successful.");
+			printf("\n---------------------next request--------------------\n");
+			nextSerial();
+		}while(auth >= 0);
+
 		close(newsockfd);//close connection 
 	}
 	 
