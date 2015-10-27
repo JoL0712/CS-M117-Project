@@ -236,6 +236,8 @@ int main(int argc, char *argv[])
 				printf("Request was not successful.");
 			printf("\n---------------------next request--------------------\n");
 			nextSerial();
+			if (auth >= 0)
+				printf("Next Serial Number should be %d.\n-------------------\n",savedSerial);
 		}while(auth >= 0);
 
 		close(newsockfd);//close connection 

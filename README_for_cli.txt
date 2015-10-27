@@ -33,3 +33,14 @@ LOGOUT	0	0	(whatever next) .
 OPTION	1(opt#)	1(ver#)	(whatever next) .
 UPDATE	1(opt#)	1(ver#)	(whatever next) .
 
+Note: Commands are cached on session basis. They would be lost if you log out.
+
+How To Use:
+
+gcc remoteCmdCLI.c -o remoteServer
+gcc client.c -o remoteClient
+./remoteServer <port number(say 50000-59999)>
+./remoteClient localhost <port number>
+
+Then type in request on Client Side. 
+Refer to the server side for the next sequence number needed.
