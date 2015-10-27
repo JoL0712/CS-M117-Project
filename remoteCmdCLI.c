@@ -16,13 +16,15 @@
 #define BUFLEN 1024
 #define NUMOPT 16
 
-const char * BAD_REQUEST_TEMPLATE = "Error: Syntax Error. [USER/PASS/LOGOUT/OPTION/UPDATE] [Opt#/0] [Ver#/0] [Text/.] [(Random Int)Serial#]\n";
+const char * BAD_REQUEST_TEMPLATE = "Error: Syntax Error. [USER/PASS/LOGOUT/OPTION/UPDATE] [Opt#/0] [Ver#/0] [(Random Int)Serial#] [Text/.]\n";
 const char * UPDATED_TEMPLATE = "Option %d updated to version %d.\n";
 const char * BAD_METHOD_TEMPLATE = "Method %s is not supported.\n";
 const char * NOT_UPDATED_TEMPLATE = "Option %d is not updated.\n";
 const char * USER_OK_TEMPLATE = "Password:\n";
 const char * USER_BAD_TEMPLATE = "Error: Bad Credential.\n";
-const char * PASSWORD_OK_TEMPLATE = "You are logged in.\n";
+const char * PASSWORD_OK_TEMPLATE = "Logged in.\n";
+const char * LOGOUT_TEMPLATE = "Logged out.\n";
+const char * UNAUTHORIZED_TEMPLATE = "Please log in.\n";
 
 const char * username = "CS117";
 const char * password = "whothehellknows";
@@ -80,19 +82,32 @@ int processRequest(char* buffer, int sockfd)
 	memset(response, 0, BUFLEN);
 
    	int n;
-	n = sscanf(buffer, "%s %d %d %s %d",method, &number, &version, additional, &serial);
+	n = sscanf(buffer, "%s %d %d %d %s",method, &number, &version, &serial, additional);
 	if (n == EOF || n < 5){
 		write (sockfd, BAD_REQUEST_TEMPLATE, strlen(BAD_REQUEST_TEMPLATE));
 		return -1;
 	}
 
 	// For debugging purposes
-	printf("Here are Headers:%s %d %d %s %d\n",method, number, version, additional, serial);
+	printf("Here are Headers:%s %d %d %d %s\n",method, number, version, serial, additional);
 
 	// Check if the client is the last user.
 	if (auth > -1 && serial != savedSerial)
 	{
 		auth = -1;
+		return -1;
+	}
+
+	if (auth == -1 && strcasecmp(method, "USER") != 0)
+	{
+		write (sockfd, UNAUTHORIZED_TEMPLATE, strlen(UNAUTHORIZED_TEMPLATE));
+		return -1;
+	}
+
+	if (auth == 0 && strcasecmp(method, "PASS") != 0)
+	{
+		auth = -1;
+		write (sockfd, UNAUTHORIZED_TEMPLATE, strlen(UNAUTHORIZED_TEMPLATE));
 		return -1;
 	}
 
@@ -152,7 +167,8 @@ int processRequest(char* buffer, int sockfd)
 	else if (strcasecmp(method, "LOGOUT") == 0)
 	{
 		auth = -1;
-		return -1;
+		write (sockfd, LOGOUT_TEMPLATE, strlen(LOGOUT_TEMPLATE));
+		return 0;
 	}
 	else
 	{
