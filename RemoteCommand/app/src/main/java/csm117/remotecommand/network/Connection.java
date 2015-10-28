@@ -1,5 +1,6 @@
 package csm117.remotecommand.network;
 
+import csm117.remotecommand.MainActivity;
 import csm117.remotecommand.command.CommandItem;
 
 /**
@@ -9,6 +10,9 @@ public class Connection {
     private static Connection mInstance = new Connection();
     private Connection() {}
     public static Connection getInstance() { return mInstance; }
+    private static MainActivity mMainActivity = null;
+
+    public static void setMainActivity(MainActivity mainActivity) { mMainActivity = mainActivity; }
 
     public void sendCommand(CommandItem commandItem) {
         //TODO
@@ -16,5 +20,6 @@ public class Connection {
 
     public void connect(DiscoveryItem discoveryItem) {
         //TODO
+        mMainActivity.setTitle("Connected to " + discoveryItem.getHostName());
     }
 }

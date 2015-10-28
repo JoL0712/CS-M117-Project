@@ -2,6 +2,7 @@ package csm117.remotecommand.network;
 
 import android.app.Activity;
 import android.app.ProgressDialog;
+import android.util.Log;
 
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
@@ -25,50 +26,63 @@ public class Discovery {
         mAddresses = new ArrayList<>();
     }
 
-    public List<InetAddress> search(int timeout, Activity activity){
-        mAddresses.clear();
-        mRcvr.start();
+    interface SearchCallback {
+        void callback(List<InetAddress> addresses);
+    }
 
+    public void search(int timeout, Activity activity, final SearchCallback callback){
+        mAddresses.clear();
         final ProgressDialog pd = ProgressDialog.show(activity,
-                "Listening...", "Attempting to Find Connectable Device");
+                "Searching...", "Attempting to Find Connectable Device", true, false);
         final Timer listenTimer = new Timer();
+        mRcvr.start();
         listenTimer.schedule(new TimerTask() {
             @Override
             public void run() {
-                pd.dismiss();
                 mRcvr.kill();
+                try {
+                    mRcvr.join();
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+                mRcvr = new Receiver();
+                callback.callback(mAddresses);
+                pd.dismiss();
                 listenTimer.cancel();
             }
         }, timeout, 1);
-
-        return mAddresses;
     }
 
     public class Receiver extends Thread {
         private DatagramSocket mSocket = null;
         private static final String CONFIRM_DATA = "RemoteCommand";
-        private static final int PORT = 2020;
+        private static final int PORT = 2000;
         private boolean mRunning;
 
         @Override
         public void run() {
             mRunning = true;
             try {
-                mSocket = new DatagramSocket(PORT, InetAddress.getByName("0.0.0.0"));
+                mSocket = new DatagramSocket(PORT);
                 mSocket.setBroadcast(true);
             } catch (Exception e) {
                 e.printStackTrace();
             }
             if (mSocket == null)
                 kill();
+            Log.d("Discovery", "Listening...");
             while(mRunning) {
                 try {
                     byte[] recvBuf = new byte[15000];
                     DatagramPacket packet = new DatagramPacket(recvBuf, recvBuf.length);
+                    Log.d("Discovery", "Receiving...");
                     mSocket.receive(packet);
+                    Log.d("Discovery", "Success!");
 
                     String message = new String(packet.getData()).trim();
+                    Log.d("Discovery", "Packet message: " + message);
                     if (message.equals(CONFIRM_DATA)) {
+                        Log.d("Discovery", "Adding address...");
                         mAddresses.add(packet.getAddress());
                     }
                 } catch (Exception e) {
@@ -79,6 +93,7 @@ public class Discovery {
         }
 
         public void kill() {
+            Log.d("Discovery", "Killing...");
             mRunning = false;
             if (mSocket != null)
                 mSocket.close();

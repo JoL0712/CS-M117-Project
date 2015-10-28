@@ -8,10 +8,13 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.AdapterView;
 import android.widget.ListView;
+import android.widget.Toast;
 
 import java.net.InetAddress;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import csm117.remotecommand.R;
 import csm117.remotecommand.command.CommandItem;
@@ -24,8 +27,9 @@ public class DiscoveryFragment extends Fragment implements AdapterView.OnItemCli
     private Discovery mDiscovery;
     private ListView mListView = null;
     private List<DiscoveryItem> mDevices;
+    private Set<String> mIPAddresses;
     private DiscoveryListViewAdapter mAdapter = null;
-    private static final int DISCOVER_TIMEOUT = 5000;
+    private static final int DISCOVER_TIMEOUT = 10000;
 
     @Nullable
     @Override
@@ -36,6 +40,7 @@ public class DiscoveryFragment extends Fragment implements AdapterView.OnItemCli
         mDiscovery = new Discovery();
 
         mDevices = new ArrayList<>();
+        mIPAddresses = new HashSet<>();
 
         mAdapter = new DiscoveryListViewAdapter(getActivity(), R.layout.discovery_list_item, mDevices);
         mListView.setAdapter(mAdapter);
@@ -45,11 +50,24 @@ public class DiscoveryFragment extends Fragment implements AdapterView.OnItemCli
     }
 
     public void discover() {
-        List<InetAddress> addresses = mDiscovery.search(DISCOVER_TIMEOUT, getActivity());
-        for (InetAddress a : addresses) {
-            mDevices.add(new DiscoveryItem(a.getCanonicalHostName(), a.getHostAddress()));
-        }
-        mAdapter.notifyDataSetChanged();
+        mDiscovery.search(DISCOVER_TIMEOUT, getActivity(), new Discovery.SearchCallback() {
+            @Override
+            public void callback(final List<InetAddress> addresses) {
+                for (InetAddress a : addresses) {
+                    DiscoveryItem di = new DiscoveryItem(a.getHostName(), a.getHostAddress());
+                    if (!mIPAddresses.contains(di.getIPAddress())) {
+                        mIPAddresses.add(di.getIPAddress());
+                        mDevices.add(di);
+                    }
+                }
+                getActivity().runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        mAdapter.notifyDataSetChanged();
+                    }
+                });
+            }
+        });
     }
 
     @Override

@@ -11,22 +11,30 @@ import java.util.ArrayList;
 import java.util.List;
 
 import csm117.remotecommand.command.CommandsFragment;
+import csm117.remotecommand.network.Connection;
 import csm117.remotecommand.network.DiscoveryFragment;
 
 public class MainActivity extends AppCompatActivity {
     ViewPager mViewPager;
     ViewPagerAdapter mViewPagerAdapter;
     Menu mMenu;
+    DiscoveryFragment mDiscoveryFragment;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+        Connection.setMainActivity(this);
+
+        setTitle("Not connected to a device");
+        //TODO: Connection.connect() using last stored connection
+
         //add more fragment pages
+        mDiscoveryFragment = new DiscoveryFragment();
         List<ViewPagerAdapter.FragmentHolder> fragmentHolders = new ArrayList<>();
         fragmentHolders.add(new ViewPagerAdapter.FragmentHolder("Commands", new CommandsFragment()));
-        fragmentHolders.add(new ViewPagerAdapter.FragmentHolder("Devices", new DiscoveryFragment()));
+        fragmentHolders.add(new ViewPagerAdapter.FragmentHolder("Devices", mDiscoveryFragment));
 
         mViewPagerAdapter = new ViewPagerAdapter(getSupportFragmentManager(), fragmentHolders);
         mViewPager = (ViewPager) findViewById(R.id.pager);
@@ -39,6 +47,7 @@ public class MainActivity extends AppCompatActivity {
     public boolean onCreateOptionsMenu(Menu menu) {
         mMenu = menu;
         // Inflate the menu; this adds items to the action bar if it is present.
+        getMenuInflater().inflate(R.menu.menu_main, mMenu);
         return true;
     }
 
@@ -51,6 +60,9 @@ public class MainActivity extends AppCompatActivity {
         switch (id) {
             case R.id.action_settings:
                 //TODO
+                return true;
+            case R.id.action_find_devices:
+                mDiscoveryFragment.discover();
                 return true;
         }
 
