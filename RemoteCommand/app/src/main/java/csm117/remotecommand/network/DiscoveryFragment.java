@@ -29,7 +29,7 @@ public class DiscoveryFragment extends Fragment implements AdapterView.OnItemCli
     private List<DiscoveryItem> mDevices;
     private Set<String> mIPAddresses;
     private DiscoveryListViewAdapter mAdapter = null;
-    private static final int DISCOVER_TIMEOUT = 10000;
+    private static final int DISCOVER_TIMEOUT = 5000;
 
     @Nullable
     @Override

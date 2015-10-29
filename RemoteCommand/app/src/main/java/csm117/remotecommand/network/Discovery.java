@@ -39,7 +39,7 @@ public class Discovery {
         listenTimer.schedule(new TimerTask() {
             @Override
             public void run() {
-                mRcvr.kill();
+                mRcvr.interrupt();
                 try {
                     mRcvr.join();
                 } catch (InterruptedException e) {
@@ -56,24 +56,19 @@ public class Discovery {
     public class Receiver extends Thread {
         private DatagramSocket mSocket = null;
         private static final String CONFIRM_DATA = "RemoteCommand";
-        private static final int PORT = 2000;
-        private boolean mRunning;
 
         @Override
         public void run() {
-            mRunning = true;
             try {
-                mSocket = new DatagramSocket(PORT);
+                mSocket = new DatagramSocket(Connection.PORT);
                 mSocket.setBroadcast(true);
             } catch (Exception e) {
                 e.printStackTrace();
             }
-            if (mSocket == null)
-                kill();
             Log.d("Discovery", "Listening...");
-            while(mRunning) {
+            while(!Thread.currentThread().isInterrupted()) {
                 try {
-                    byte[] recvBuf = new byte[15000];
+                    byte[] recvBuf = new byte[1024];
                     DatagramPacket packet = new DatagramPacket(recvBuf, recvBuf.length);
                     Log.d("Discovery", "Receiving...");
                     mSocket.receive(packet);
@@ -89,18 +84,12 @@ public class Discovery {
                     e.printStackTrace();
                 }
             }
-            kill();
-        }
-
-        public void kill() {
-            Log.d("Discovery", "Killing...");
-            mRunning = false;
             if (mSocket != null)
                 mSocket.close();
         }
     }
 
     public void onDestroy() {
-        mRcvr.kill();
+        mRcvr.interrupt();
     }
 }
