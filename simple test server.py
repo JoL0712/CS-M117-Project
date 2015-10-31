@@ -24,18 +24,19 @@ s.settimeout(1)
 client = None
 
 while client == None:
-    time.sleep(.5)
-    print("Sending...");
-    for j in range(256): #send to all local network ip address within subnet
-        sock.sendto(MESSAGE.encode('utf-8'), (UDP_IP + str(j), UDP_PORT))
-    try:
-        client, address = s.accept()
+	time.sleep(.5)
+	print("Sending...");
+	for j in range(256): #send to all local network ip address within subnet
+		sock.sendto(MESSAGE.encode('utf-8'), (UDP_IP + str(j), UDP_PORT))
+	try:
+		client, address = s.accept()
 		print("Connected to " + address);
-    except:
-        continue
+	except:
+		continue
 		
 while 1: 
-    data = client.recv(1024) 
-    print(data);
+	data = client.recv(1024) 
+	print(data);
+	client.send(data)
 
 client.close()

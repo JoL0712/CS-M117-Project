@@ -70,6 +70,12 @@ public class DiscoveryFragment extends Fragment implements AdapterView.OnItemCli
         });
     }
 
+    public void clear() {
+        mDevices.clear();
+        mIPAddresses.clear();
+        mAdapter.notifyDataSetChanged();
+    }
+
     @Override
     public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
         //if pc has command cached then send just the command name

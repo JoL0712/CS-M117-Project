@@ -14,6 +14,7 @@ import java.util.TimerTask;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.TimeoutException;
 
 /**
  * Created by John Lee on 10/26/2015.
@@ -22,7 +23,6 @@ public class Discovery {
     private Receiver mRcvr;
     private List<InetAddress> mAddresses;
     public Discovery() {
-        mRcvr = new Receiver();
         mAddresses = new ArrayList<>();
     }
 
@@ -30,32 +30,26 @@ public class Discovery {
         void callback(List<InetAddress> addresses);
     }
 
-    public void search(int timeout, Activity activity, final SearchCallback callback){
+    public void search(int timeout, Activity activity, SearchCallback callback){
         mAddresses.clear();
-        final ProgressDialog pd = ProgressDialog.show(activity,
+        ProgressDialog pd = ProgressDialog.show(activity,
                 "Searching...", "Attempting to Find Connectable Device", true, false);
-        final Timer listenTimer = new Timer();
+        mRcvr = new Receiver(timeout, callback, pd);
         mRcvr.start();
-        listenTimer.schedule(new TimerTask() {
-            @Override
-            public void run() {
-                mRcvr.interrupt();
-                try {
-                    mRcvr.join();
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
-                }
-                mRcvr = new Receiver();
-                callback.callback(mAddresses);
-                pd.dismiss();
-                listenTimer.cancel();
-            }
-        }, timeout, 1);
     }
 
     public class Receiver extends Thread {
         private DatagramSocket mSocket = null;
         private static final String CONFIRM_DATA = "RemoteCommand";
+        private SearchCallback mCallback;
+        private ProgressDialog mProgressDialog;
+        private int mTimeout = 5000, mMaxLoop = 5;
+
+        public Receiver(int timeout, SearchCallback callback, ProgressDialog pd) {
+            mTimeout = timeout;
+            mCallback = callback;
+            mProgressDialog = pd;
+        }
 
         @Override
         public void run() {
@@ -71,21 +65,28 @@ public class Discovery {
                     byte[] recvBuf = new byte[1024];
                     DatagramPacket packet = new DatagramPacket(recvBuf, recvBuf.length);
                     Log.d("Discovery", "Receiving...");
+                    mSocket.setSoTimeout(mTimeout);
                     mSocket.receive(packet);
                     Log.d("Discovery", "Success!");
 
                     String message = new String(packet.getData()).trim();
                     Log.d("Discovery", "Packet message: " + message);
-                    if (message.equals(CONFIRM_DATA)) {
+                    if (message.equals(CONFIRM_DATA) && !mAddresses.contains(packet.getAddress())) {
                         Log.d("Discovery", "Adding address...");
                         mAddresses.add(packet.getAddress());
                     }
-                } catch (Exception e) {
+                    if (mMaxLoop-- < 0)
+                        break;
+                }
+                catch (Exception e) {
                     e.printStackTrace();
+                    break;
                 }
             }
             if (mSocket != null)
                 mSocket.close();
+            mCallback.callback(mAddresses);
+            mProgressDialog.dismiss();
         }
     }
 

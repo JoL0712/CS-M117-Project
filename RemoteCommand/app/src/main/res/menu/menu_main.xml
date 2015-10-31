@@ -6,4 +6,6 @@
         android:orderInCategory="100" app:showAsAction="never" />
     <item android:id="@+id/action_find_devices" android:title="Find Devices"
         android:orderInCategory="100" app:showAsAction="never" />
+    <item android:id="@+id/action_clear_devices" android:title="Clear Devices"
+        android:orderInCategory="100" app:showAsAction="never" />
 </menu>

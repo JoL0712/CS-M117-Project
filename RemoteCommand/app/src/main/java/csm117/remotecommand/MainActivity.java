@@ -9,12 +9,14 @@ import android.view.MenuItem;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.ConcurrentLinkedQueue;
 
 import csm117.remotecommand.command.CommandsFragment;
 import csm117.remotecommand.network.Connection;
 import csm117.remotecommand.network.DiscoveryFragment;
 
 public class MainActivity extends AppCompatActivity {
+    public static String NO_CONNECTION = "Not connected to a device";
     ViewPager mViewPager;
     ViewPagerAdapter mViewPagerAdapter;
     Menu mMenu;
@@ -27,7 +29,7 @@ public class MainActivity extends AppCompatActivity {
 
         Connection.setMainActivity(this);
 
-        setTitle("Not connected to a device");
+        setTitle(NO_CONNECTION);
         //TODO: Connection.connect() using last stored connection
 
         //add more fragment pages
@@ -60,13 +62,16 @@ public class MainActivity extends AppCompatActivity {
         switch (id) {
             case R.id.action_settings:
                 //TODO
-                return true;
+                break;
             case R.id.action_find_devices:
                 mDiscoveryFragment.discover();
-                return true;
+                break;
+            case R.id.action_clear_devices:
+                mDiscoveryFragment.clear();
+                break;
         }
 
-        return super.onOptionsItemSelected(item);
+        return true;
     }
 
     @Override

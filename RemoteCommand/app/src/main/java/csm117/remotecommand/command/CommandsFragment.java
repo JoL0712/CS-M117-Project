@@ -64,6 +64,8 @@ public class CommandsFragment extends Fragment implements AdapterView.OnItemClic
     public void loadCommands() {
         //Preset Commands
         mCommands.add(new CommandItem("Logout Windows", "shutdown -l"));
+        mCommands.add(new CommandItem("Restart Windows", "shutdown -r"));
+        mCommands.add(new CommandItem("Shutdown Windows", "shutdown -s"));
         //TODO: loading commands
     }
 
