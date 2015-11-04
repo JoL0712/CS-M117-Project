@@ -69,6 +69,9 @@ public class MainActivity extends AppCompatActivity {
             case R.id.action_clear_devices:
                 mDiscoveryFragment.clear();
                 break;
+            case R.id.action_logout:
+                Connection.getInstance().logout();
+                break;
         }
 
         return true;

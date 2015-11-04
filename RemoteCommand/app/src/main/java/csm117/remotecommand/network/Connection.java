@@ -5,6 +5,8 @@ import android.app.ProgressDialog;
 import android.content.DialogInterface;
 import android.os.AsyncTask;
 import android.support.design.widget.Snackbar;
+import android.text.InputType;
+import android.widget.EditText;
 import android.widget.Toast;
 
 import java.io.BufferedReader;
@@ -17,6 +19,7 @@ import java.io.OutputStreamWriter;
 import java.io.UnsupportedEncodingException;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.util.Random;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
 import csm117.remotecommand.MainActivity;
@@ -32,18 +35,43 @@ public class Connection {
     public static Connection getInstance() { return mInstance; }
     private static volatile MainActivity mMainActivity = null;
     private Client mClient = null;
+    private static final String REQ_PASS = "PASS", REQ_LOGOUT = "LOGOUT", REQ_OPTION = "OPTION", REQ_UPDATE = "UPDATE";
 
     public static void setMainActivity(MainActivity mainActivity) { mMainActivity = mainActivity; }
 
     public void sendCommand(CommandItem commandItem) {
-        //TODO
-        if (mClient == null || !mClient.send(commandItem.getCommand())) {
+        if (mClient == null || !mClient.send(REQ_OPTION, commandItem.getCommand())) {
             Toast.makeText(mMainActivity, "Please connect to a device first", Toast.LENGTH_SHORT).show();
         }
     }
 
+    private void login(String pass) {
+        if (mClient == null || !mClient.send(REQ_PASS, pass)) {
+            disconnect();
+            Toast.makeText(mMainActivity, "Not connected to device", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    public void logout() {
+        if (mClient == null || !mClient.send(REQ_LOGOUT, "")) {
+            disconnect();
+            Toast.makeText(mMainActivity, "Not connected to device", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private void disconnect() {
+        if (mClient != null) {
+            mClient.close();
+            try {
+                mClient.join();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+            mClient = null;
+        }
+    }
+
     public void connect(final DiscoveryItem discoveryItem) {
-        //TODO
         if (mClient != null && mClient.connected() && mClient.getDiscoveryItem().getIPAddress().equals(discoveryItem.getIPAddress()))
             return;
         new AsyncTask<Void, Void, Void>() {
@@ -57,14 +85,7 @@ public class Connection {
 
             @Override
             protected Void doInBackground(Void... params) {
-                if (mClient != null) {
-                    mClient.close();
-                    try {
-                        mClient.join();
-                    } catch (InterruptedException e) {
-                        e.printStackTrace();
-                    }
-                }
+                disconnect();
                 mClient = new Client(discoveryItem);
                 mClient.start();
                 return null;
@@ -74,6 +95,26 @@ public class Connection {
             protected void onPostExecute(Void aVoid) {
                 super.onPostExecute(aVoid);
                 pd.dismiss();
+                AlertDialog.Builder builder = new AlertDialog.Builder(mMainActivity);
+                builder.setTitle("Password");
+                final EditText input = new EditText(mMainActivity);
+                input.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_PASSWORD);
+                builder.setView(input);
+
+                builder.setPositiveButton("OK", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        login(input.getText().toString());
+                    }
+                });
+                builder.setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        disconnect();
+                        dialog.cancel();
+                    }
+                });
+                builder.show();
             }
         }.execute();
     }
@@ -83,26 +124,64 @@ public class Connection {
         private ConcurrentLinkedQueue<String> mDataToSend;
         private DiscoveryItem mDiscoveryItem;
         private volatile boolean mConnectionLost;
+        private int mSavedSerial;
+        private boolean mLoggingOut;
 
         public Client(DiscoveryItem discoveryItem) {
             mDiscoveryItem = discoveryItem;
             mDataToSend = new ConcurrentLinkedQueue<>();
             mConnectionLost = false;
+            mSavedSerial = new Random().nextInt();
+            mLoggingOut = false;
         }
 
         public DiscoveryItem getDiscoveryItem() {
             return mDiscoveryItem;
         }
 
-        public synchronized boolean send(String data) {
+        public synchronized boolean send(String request, String data) {
             if (mConnectionLost)
                 return false;
-            mDataToSend.add(data);
+
+            mSavedSerial = (int) (((long) mSavedSerial * 1103515245 + 12345) % 65535);
+            int opt = 0, ver = 0;
+            switch (request)
+            {
+                case REQ_LOGOUT:
+                    mLoggingOut = true;
+                    break;
+                case REQ_UPDATE:
+                case REQ_OPTION:
+                    opt = 1;
+                    ver = 1;
+                    break;
+            }
+            mDataToSend.add(String.format("%s %d %d %d %s", request, opt, ver, mSavedSerial, data));
             return true;
+        }
+
+        public void recv(final String data) {
+            mMainActivity.runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    new AlertDialog.Builder(mMainActivity)
+                            .setTitle("Output")
+                            .setMessage(data)
+                            .setNeutralButton(android.R.string.ok, new DialogInterface.OnClickListener() {
+                                public void onClick(DialogInterface dialog, int which) {
+                                }
+                            })
+                            .setIcon(android.R.drawable.ic_dialog_alert)
+                            .show();
+                }
+            });
+            if (mLoggingOut && data.contains("Logged out"))
+                close();
         }
 
         public void close() {
             mConnectionLost = true;
+            mLoggingOut = false;
         }
 
         public boolean connected() {
@@ -131,24 +210,7 @@ public class Connection {
                             final byte array[] = new byte[4096];
                             int i = reader.read(array);
                             if (i > 0) {
-                                mMainActivity.runOnUiThread(new Runnable() {
-                                    @Override
-                                    public void run() {
-                                        try {
-                                            new AlertDialog.Builder(mMainActivity)
-                                                    .setTitle("Output")
-                                                    .setMessage(new String(array, "UTF-8"))
-                                                    .setNeutralButton(android.R.string.ok, new DialogInterface.OnClickListener() {
-                                                        public void onClick(DialogInterface dialog, int which) {
-                                                        }
-                                                    })
-                                                    .setIcon(android.R.drawable.ic_dialog_alert)
-                                                    .show();
-                                        } catch (UnsupportedEncodingException e) {
-                                            e.printStackTrace();
-                                        }
-                                    }
-                                });
+                                recv(new String(array, "UTF-8"));
                             }
                             else if (i == -1) {
                                 mConnectionLost = true;

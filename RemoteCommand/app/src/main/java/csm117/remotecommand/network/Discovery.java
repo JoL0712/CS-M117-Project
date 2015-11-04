@@ -20,7 +20,7 @@ import java.util.concurrent.TimeoutException;
  * Created by John Lee on 10/26/2015.
  */
 public class Discovery {
-    private Receiver mRcvr;
+    private Receiver mRcvr = null;
     private List<InetAddress> mAddresses;
     public Discovery() {
         mAddresses = new ArrayList<>();
@@ -91,6 +91,7 @@ public class Discovery {
     }
 
     public void onDestroy() {
-        mRcvr.interrupt();
+        if (mRcvr != null)
+            mRcvr.interrupt();
     }
 }

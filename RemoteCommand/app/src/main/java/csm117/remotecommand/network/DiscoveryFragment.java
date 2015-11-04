@@ -24,7 +24,7 @@ import csm117.remotecommand.command.CommandListViewAdapter;
  * Created by John Lee on 10/26/2015.
  */
 public class DiscoveryFragment extends Fragment implements AdapterView.OnItemClickListener {
-    private Discovery mDiscovery;
+    private Discovery mDiscovery = null;
     private ListView mListView = null;
     private List<DiscoveryItem> mDevices;
     private Set<String> mIPAddresses;
@@ -50,6 +50,8 @@ public class DiscoveryFragment extends Fragment implements AdapterView.OnItemCli
     }
 
     public void discover() {
+        if (mDiscovery == null)
+            mDiscovery = new Discovery();
         mDiscovery.search(DISCOVER_TIMEOUT, getActivity(), new Discovery.SearchCallback() {
             @Override
             public void callback(final List<InetAddress> addresses) {

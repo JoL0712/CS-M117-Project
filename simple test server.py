@@ -35,8 +35,12 @@ while client == None:
 		continue
 		
 while 1: 
-	data = client.recv(1024) 
-	print(data);
-	client.send(data)
+	try:
+		data = client.recv(1024) 
+	except:
+		pass
+	else:
+		print(data);
+		client.send(data)
 
 client.close()
