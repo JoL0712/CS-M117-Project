@@ -3,10 +3,14 @@ package csm117.remotecommand.command;
 import android.content.Intent;
 import android.os.Bundle;
 import android.support.annotation.Nullable;
+import android.support.design.widget.FloatingActionButton;
 import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentTransaction;
 import android.text.method.ScrollingMovementMethod;
+import android.view.ContextMenu;
 import android.view.LayoutInflater;
+import android.view.Menu;
+import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.AdapterView;
@@ -22,10 +26,12 @@ import java.util.List;
 import csm117.remotecommand.R;
 import csm117.remotecommand.network.Connection;
 
-public class CommandsFragment extends Fragment implements AdapterView.OnItemClickListener, AdapterView.OnItemLongClickListener {
+public class CommandsFragment extends Fragment implements AdapterView.OnItemClickListener {
     private ListView mListView = null;
     private static List<CommandItem> mCommands;
     private static CommandListViewAdapter mAdapter = null;
+    private final static int CONTEXT_MENU_EDIT_ITEM = 0, CONTEXT_MENU_DELETE_ITEM = 1;
+    private FloatingActionButton mAddButton;
 
     @Nullable
     @Override
@@ -39,9 +45,53 @@ public class CommandsFragment extends Fragment implements AdapterView.OnItemClic
         mAdapter = new CommandListViewAdapter(getActivity(), R.layout.command_list_item, mCommands);
         mListView.setAdapter(mAdapter);
         mListView.setOnItemClickListener(this);
-        mListView.setOnItemLongClickListener(this);
+        registerForContextMenu(mListView);
 
+        mAddButton = (FloatingActionButton) view.findViewById(R.id.fab);
+        mAddButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                mCommands.add(new CommandItem("Command Name", ""));
+                editCommand(mCommands.size() - 1);
+            }
+        });
         return view;
+    }
+
+    @Override
+    public void onCreateContextMenu(ContextMenu menu, View v, ContextMenu.ContextMenuInfo menuInfo) {
+        menu.add(Menu.NONE, CONTEXT_MENU_EDIT_ITEM, Menu.NONE, "Edit");
+        menu.add(Menu.NONE, CONTEXT_MENU_DELETE_ITEM, Menu.NONE, "Delete");
+    }
+
+    private void editCommand(int position) {
+        CommandItem ci = (CommandItem) mListView.getItemAtPosition(position);
+
+        Intent intent = new Intent();
+        intent.putExtra("CommandIndex", position);
+
+        FragmentTransaction ft = getActivity().getSupportFragmentManager().beginTransaction();
+        EditorFragment cb = new EditorFragment();
+        cb.setArguments(intent.getExtras());
+        ft.add(R.id.main_layout, cb);
+        ft.addToBackStack("CommandEditorLayout");
+        ft.commit();
+    }
+
+    @Override
+    public boolean onContextItemSelected(MenuItem item) {
+        AdapterView.AdapterContextMenuInfo info= (AdapterView.AdapterContextMenuInfo) item.getMenuInfo();
+
+        switch (item.getItemId()) {
+            case CONTEXT_MENU_EDIT_ITEM:
+                editCommand(info.position);
+                return true;
+            case CONTEXT_MENU_DELETE_ITEM:
+                mCommands.remove(info.position);
+                mAdapter.notifyDataSetChanged();
+                return true;
+        }
+        return false;
     }
 
     public void loadCommands() {
@@ -56,34 +106,12 @@ public class CommandsFragment extends Fragment implements AdapterView.OnItemClic
         //TODO: saving commands
     }
 
-    //TODO: adding commands
-
-    //TODO: editing commands
-
-    //TODO: removing commands
-
     @Override
     public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
         //if pc has command cached then send just the command name
             //check command version (version changes if it is updated)
         //else send the actual command
         Connection.getInstance().sendCommand((CommandItem) mListView.getItemAtPosition(position));
-    }
-
-    @Override
-    public boolean onItemLongClick(AdapterView<?> parent, View view, int position, long id) {
-        CommandItem ci = (CommandItem) mListView.getItemAtPosition(position);
-
-        Intent intent = new Intent();
-        intent.putExtra("CommandIndex", position);
-
-        FragmentTransaction ft = getActivity().getSupportFragmentManager().beginTransaction();
-        EditorFragment cb = new EditorFragment();
-        cb.setArguments(intent.getExtras());
-        ft.add(R.id.main_layout, cb);
-        ft.addToBackStack("CommandEditorLayout");
-        ft.commit();
-        return true;
     }
 
     public static class EditorFragment extends Fragment {
@@ -108,6 +136,7 @@ public class CommandsFragment extends Fragment implements AdapterView.OnItemClic
                 @Override
                 public void onClick(View v) {
                     getActivity().getSupportFragmentManager().popBackStack();
+                    mAdapter.notifyDataSetChanged();
                 }
             });
             return view;

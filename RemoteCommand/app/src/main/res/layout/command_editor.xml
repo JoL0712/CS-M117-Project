@@ -12,6 +12,7 @@
         android:textStyle="bold"
         android:textSize="25sp"
         android:textColor="#ffffff"
+        android:background="#111111"
         android:padding="5dp"
         android:maxLength="50"
         android:singleLine="true"
