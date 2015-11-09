@@ -60,12 +60,6 @@ public class MainActivity extends AppCompatActivity {
         // as you specify a parent activity in AndroidManifest.xml.
         int id = item.getItemId();
         switch (id) {
-            case R.id.action_settings:
-                //TODO
-                break;
-            case R.id.action_find_devices:
-                mDiscoveryFragment.discover();
-                break;
             case R.id.action_clear_devices:
                 mDiscoveryFragment.clear();
                 break;

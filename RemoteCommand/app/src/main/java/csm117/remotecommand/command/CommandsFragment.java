@@ -31,7 +31,6 @@ public class CommandsFragment extends Fragment implements AdapterView.OnItemClic
     private static List<CommandItem> mCommands;
     private static CommandListViewAdapter mAdapter = null;
     private final static int CONTEXT_MENU_EDIT_ITEM = 0, CONTEXT_MENU_DELETE_ITEM = 1;
-    private FloatingActionButton mAddButton;
 
     @Nullable
     @Override
@@ -47,8 +46,8 @@ public class CommandsFragment extends Fragment implements AdapterView.OnItemClic
         mListView.setOnItemClickListener(this);
         registerForContextMenu(mListView);
 
-        mAddButton = (FloatingActionButton) view.findViewById(R.id.fab);
-        mAddButton.setOnClickListener(new View.OnClickListener() {
+        FloatingActionButton fab = (FloatingActionButton) view.findViewById(R.id.fab_add_command);
+        fab.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
                 mCommands.add(new CommandItem("Command Name", ""));
