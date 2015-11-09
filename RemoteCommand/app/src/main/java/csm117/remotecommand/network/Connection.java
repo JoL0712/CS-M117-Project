@@ -40,6 +40,7 @@ public class Connection {
     public static void setMainActivity(MainActivity mainActivity) { mMainActivity = mainActivity; }
 
     public void sendCommand(CommandItem commandItem) {
+        //TODO: send name, option, version
         if (mClient == null || !mClient.send(REQ_OPTION, commandItem.getCommand())) {
             Toast.makeText(mMainActivity, "Please connect to a device first", Toast.LENGTH_SHORT).show();
         }
@@ -125,14 +126,16 @@ public class Connection {
         private DiscoveryItem mDiscoveryItem;
         private volatile boolean mConnectionLost;
         private int mSavedSerial;
-        private boolean mLoggingOut;
+
+        enum Action { NONE, LOGOUT, OPTION }
+        private Action mAction;
 
         public Client(DiscoveryItem discoveryItem) {
             mDiscoveryItem = discoveryItem;
             mDataToSend = new ConcurrentLinkedQueue<>();
             mConnectionLost = false;
-            mSavedSerial = new Random().nextInt();
-            mLoggingOut = false;
+            mSavedSerial = new Random().nextInt(13469);
+            mAction = Action.NONE;
         }
 
         public DiscoveryItem getDiscoveryItem() {
@@ -143,17 +146,18 @@ public class Connection {
             if (mConnectionLost)
                 return false;
 
-            mSavedSerial = (int) (((long) mSavedSerial * 1103515245 + 12345) % 65535);
+            mSavedSerial = (mSavedSerial * 13469 + 2671) % 65535;
             int opt = 0, ver = 0;
             switch (request)
             {
                 case REQ_LOGOUT:
-                    mLoggingOut = true;
+                    mAction = Action.LOGOUT;
                     break;
-                case REQ_UPDATE:
                 case REQ_OPTION:
-                    opt = 1;
-                    ver = 1;
+                    mAction = Action.OPTION;
+                case REQ_UPDATE:
+                    opt = 0;
+                    ver = 0;
                     break;
             }
             mDataToSend.add(String.format("%s %d %d %d %s", request, opt, ver, mSavedSerial, data));
@@ -161,27 +165,32 @@ public class Connection {
         }
 
         public void recv(final String data) {
-            mMainActivity.runOnUiThread(new Runnable() {
-                @Override
-                public void run() {
-                    new AlertDialog.Builder(mMainActivity)
-                            .setTitle("Output")
-                            .setMessage(data)
-                            .setNeutralButton(android.R.string.ok, new DialogInterface.OnClickListener() {
-                                public void onClick(DialogInterface dialog, int which) {
-                                }
-                            })
-                            .setIcon(android.R.drawable.ic_dialog_alert)
-                            .show();
-                }
-            });
-            if (mLoggingOut && data.contains("Logged out"))
-                close();
+            if (mAction == Action.OPTION) {
+                //TODO: send update
+            }
+            else {
+                mMainActivity.runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        new AlertDialog.Builder(mMainActivity)
+                                .setTitle("Output")
+                                .setMessage(data)
+                                .setNeutralButton(android.R.string.ok, new DialogInterface.OnClickListener() {
+                                    public void onClick(DialogInterface dialog, int which) {
+                                    }
+                                })
+                                .setIcon(android.R.drawable.ic_dialog_alert)
+                                .show();
+                    }
+                });
+                if (mAction == Action.LOGOUT && data.contains("Logged out"))
+                    close();
+            }
         }
 
         public void close() {
             mConnectionLost = true;
-            mLoggingOut = false;
+            mAction = Action.NONE;
         }
 
         public boolean connected() {

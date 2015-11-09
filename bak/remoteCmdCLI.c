@@ -5,10 +5,16 @@
 */
 #include <stdio.h>
 #include <sys/types.h>   // definitions of a number of data types used in socket.h and netinet/in.h
+#ifdef __LINUX__
 #include <sys/socket.h>  // definitions of structures needed for sockets, e.g. sockaddr
 #include <netinet/in.h>  // constants and structures needed for internet domain addresses, e.g. sockaddr_in
-#include <stdlib.h>
 #include <sys/wait.h>	/* for the waitpid() system call */
+#define write_net write
+#else
+#include <winsock2.h>
+#define write_net send
+#endif
+#include <stdlib.h>
 #include <signal.h>	/* signal name macros, and the kill() prototype */
 #include <errno.h>
 #include <string.h>
@@ -34,6 +40,8 @@ int savedSerial = 0;
 char optionList[NUMOPT][BUFLEN];
 int optionValid[NUMOPT];
 int optionVersion[NUMOPT];
+
+const int PORT = 2000;
 
 void nextSerial()
 {
@@ -84,7 +92,7 @@ int processRequest(char* buffer, int sockfd)
    	int n;
 	n = sscanf(buffer, "%s %d %d %d %s",method, &number, &version, &serial, additional);
 	if (n == EOF || n < 5){
-		write (sockfd, BAD_REQUEST_TEMPLATE, strlen(BAD_REQUEST_TEMPLATE));
+		write_net (sockfd, BAD_REQUEST_TEMPLATE, strlen(BAD_REQUEST_TEMPLATE));
 		return -1;
 	}
 
@@ -100,14 +108,14 @@ int processRequest(char* buffer, int sockfd)
 
 	if (auth == -1 && strcasecmp(method, "USER") != 0)
 	{
-		write (sockfd, UNAUTHORIZED_TEMPLATE, strlen(UNAUTHORIZED_TEMPLATE));
+		write_net (sockfd, UNAUTHORIZED_TEMPLATE, strlen(UNAUTHORIZED_TEMPLATE));
 		return -1;
 	}
 
 	if (auth == 0 && strcasecmp(method, "PASS") != 0)
 	{
 		auth = -1;
-		write (sockfd, UNAUTHORIZED_TEMPLATE, strlen(UNAUTHORIZED_TEMPLATE));
+		write_net (sockfd, UNAUTHORIZED_TEMPLATE, strlen(UNAUTHORIZED_TEMPLATE));
 		return -1;
 	}
 
@@ -118,7 +126,7 @@ int processRequest(char* buffer, int sockfd)
 		optionValid[number] = 1;
 		optionVersion[number] = version;
 		snprintf(response, BUFLEN-1, UPDATED_TEMPLATE, number, version);
-		write (sockfd, response, strlen(response));
+		write_net (sockfd, response, strlen(response));
 		return 0;
 	}
 	else if(strcasecmp(method, "OPTION") == 0)
@@ -128,7 +136,7 @@ int processRequest(char* buffer, int sockfd)
 		else
 		{
 			snprintf(response, BUFLEN-1, NOT_UPDATED_TEMPLATE, number);
-			write (sockfd, response, strlen(response));
+			write_net (sockfd, response, strlen(response));
 			return 0;
 		}
 	}
@@ -138,13 +146,13 @@ int processRequest(char* buffer, int sockfd)
 		{
 			auth = 0;
 			savedSerial = serial;
-			write (sockfd, USER_OK_TEMPLATE, strlen(USER_OK_TEMPLATE));
+			write_net (sockfd, USER_OK_TEMPLATE, strlen(USER_OK_TEMPLATE));
 			return 0;
 		}
 		else
 		{
 			auth = -1;
-			write (sockfd, USER_BAD_TEMPLATE, strlen(USER_BAD_TEMPLATE));
+			write_net (sockfd, USER_BAD_TEMPLATE, strlen(USER_BAD_TEMPLATE));
 			return -1;
 		}
 	}
@@ -154,26 +162,26 @@ int processRequest(char* buffer, int sockfd)
 		{
 			auth = 1;
 			savedSerial = serial;
-			write (sockfd, PASSWORD_OK_TEMPLATE, strlen(PASSWORD_OK_TEMPLATE));
+			write_net (sockfd, PASSWORD_OK_TEMPLATE, strlen(PASSWORD_OK_TEMPLATE));
 			return 0;
 		}
 		else
 		{
 			auth = -1;
-			write (sockfd, USER_BAD_TEMPLATE, strlen(USER_BAD_TEMPLATE));
+			write_net (sockfd, USER_BAD_TEMPLATE, strlen(USER_BAD_TEMPLATE));
 			return -1;
 		}
 	}
 	else if (strcasecmp(method, "LOGOUT") == 0)
 	{
 		auth = -1;
-		write (sockfd, LOGOUT_TEMPLATE, strlen(LOGOUT_TEMPLATE));
+		write_net (sockfd, LOGOUT_TEMPLATE, strlen(LOGOUT_TEMPLATE));
 		return 0;
 	}
 	else
 	{
 		snprintf (response, BUFLEN-1, BAD_METHOD_TEMPLATE, method);
-		write (sockfd, response, strlen(response));
+		write_net (sockfd, response, strlen(response));
 		return -1;
 	}
 }
@@ -181,7 +189,11 @@ int processRequest(char* buffer, int sockfd)
 int main(int argc, char *argv[])
 {
 	int sockfd, newsockfd, portno, pid;
+#ifdef __LINUX__
 	socklen_t clilen;
+#else
+	int clilen;
+#endif
 	struct sockaddr_in serv_addr, cli_addr;
 
 	if (argc < 2) {
