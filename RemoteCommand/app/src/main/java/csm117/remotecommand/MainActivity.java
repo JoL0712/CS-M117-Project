@@ -12,6 +12,7 @@ import java.util.List;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
 import csm117.remotecommand.command.CommandsFragment;
+import csm117.remotecommand.db.RealmDB;
 import csm117.remotecommand.network.Connection;
 import csm117.remotecommand.network.DiscoveryFragment;
 
@@ -28,6 +29,7 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
 
         Connection.setMainActivity(this);
+        RealmDB.initInstance(this);
 
         setTitle(NO_CONNECTION);
         //TODO: Connection.connect() using last stored connection

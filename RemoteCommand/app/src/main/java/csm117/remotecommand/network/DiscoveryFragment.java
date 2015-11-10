@@ -57,6 +57,8 @@ public class DiscoveryFragment extends Fragment implements AdapterView.OnItemCli
         return view;
     }
 
+    //TODO: save devices, auto connect to last device when app starts
+
     public void discover() {
         if (mDiscovery == null)
             mDiscovery = new Discovery();
@@ -88,9 +90,6 @@ public class DiscoveryFragment extends Fragment implements AdapterView.OnItemCli
 
     @Override
     public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
-        //if pc has command cached then send just the command name
-        //check command version (version changes if it is updated)
-        //else send the actual command
         Connection.getInstance().connect(mDevices.get(position));
     }
 

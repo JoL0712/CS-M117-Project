@@ -24,7 +24,9 @@ import java.util.ArrayList;
 import java.util.List;
 
 import csm117.remotecommand.R;
+import csm117.remotecommand.db.RealmDB;
 import csm117.remotecommand.network.Connection;
+import io.realm.Realm;
 
 public class CommandsFragment extends Fragment implements AdapterView.OnItemClickListener {
     private ListView mListView = null;
@@ -50,7 +52,8 @@ public class CommandsFragment extends Fragment implements AdapterView.OnItemClic
         fab.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                mCommands.add(new CommandItem("Command Name", ""));
+                RealmDB.getInstance().create("Command Name", "", mCommands);
+                RealmDB.getInstance().close();
                 editCommand(mCommands.size() - 1);
             }
         });
@@ -77,6 +80,8 @@ public class CommandsFragment extends Fragment implements AdapterView.OnItemClic
         ft.commit();
     }
 
+    //TODO: way to change the order of the commands
+
     @Override
     public boolean onContextItemSelected(MenuItem item) {
         AdapterView.AdapterContextMenuInfo info= (AdapterView.AdapterContextMenuInfo) item.getMenuInfo();
@@ -86,7 +91,8 @@ public class CommandsFragment extends Fragment implements AdapterView.OnItemClic
                 editCommand(info.position);
                 return true;
             case CONTEXT_MENU_DELETE_ITEM:
-                mCommands.remove(info.position);
+                RealmDB.getInstance().delete(mCommands, info.position);
+                RealmDB.getInstance().close();
                 mAdapter.notifyDataSetChanged();
                 return true;
         }
@@ -94,23 +100,30 @@ public class CommandsFragment extends Fragment implements AdapterView.OnItemClic
     }
 
     public void loadCommands() {
-        //Preset Commands
-        mCommands.add(new CommandItem("Logout Windows", "shutdown -l"));
-        mCommands.add(new CommandItem("Restart Windows", "shutdown -r"));
-        mCommands.add(new CommandItem("Shutdown Windows", "shutdown -s"));
-        //TODO: loading commands
-    }
-
-    public void saveCommands() {
-        //TODO: saving commands
+        //load commands from database
+        mCommands = RealmDB.getInstance().selectAll();
+        if (RealmDB.getInstance().isFirstTime() && mCommands.isEmpty()) { //when user installs app and database does not exist yet then load the preset commands
+            //Preset Commands
+            RealmDB.getInstance().create("Logout Windows", "shutdown -l", mCommands);
+            RealmDB.getInstance().create("Restart Windows", "shutdown -r", mCommands);
+            RealmDB.getInstance().create("Shutdown Windows", "shutdown -s", mCommands);
+        }
+        RealmDB.getInstance().close();
     }
 
     @Override
     public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
-        //if pc has command cached then send just the command name
-            //check command version (version changes if it is updated)
-        //else send the actual command
+        //send the command to device
         Connection.getInstance().sendCommand((CommandItem) mListView.getItemAtPosition(position));
+    }
+
+    public static CommandItem getCommandItem(int option) {
+        //find command item based on option
+        for (CommandItem ci : mCommands) {
+            if (ci.getOption() == option)
+                return ci;
+        }
+        return null;
     }
 
     public static class EditorFragment extends Fragment {
@@ -128,6 +141,8 @@ public class CommandsFragment extends Fragment implements AdapterView.OnItemClic
                 public void onClick(View v) {
                     ci.setCommandName(name.getText().toString());
                     ci.setCommand(script.getText().toString());
+                    RealmDB.getInstance().update(ci);
+                    RealmDB.getInstance().close();
                     mAdapter.notifyDataSetChanged();
                 }
             });

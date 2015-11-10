@@ -6,6 +6,7 @@ import android.content.DialogInterface;
 import android.os.AsyncTask;
 import android.support.design.widget.Snackbar;
 import android.text.InputType;
+import android.util.Log;
 import android.widget.EditText;
 import android.widget.Toast;
 
@@ -24,6 +25,8 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 
 import csm117.remotecommand.MainActivity;
 import csm117.remotecommand.command.CommandItem;
+import csm117.remotecommand.command.CommandsFragment;
+import csm117.remotecommand.db.RealmDB;
 
 /**
  * Created by John Lee on 10/26/2015.
@@ -40,21 +43,20 @@ public class Connection {
     public static void setMainActivity(MainActivity mainActivity) { mMainActivity = mainActivity; }
 
     public void sendCommand(CommandItem commandItem) {
-        //TODO: send name, option, version
-        if (mClient == null || !mClient.send(REQ_OPTION, commandItem.getCommand())) {
+        if (mClient == null || !mClient.send(REQ_OPTION, new String[] { String.valueOf(commandItem.getOption()), String.valueOf(commandItem.getVersion()) })) {
             Toast.makeText(mMainActivity, "Please connect to a device first", Toast.LENGTH_SHORT).show();
         }
     }
 
     private void login(String pass) {
-        if (mClient == null || !mClient.send(REQ_PASS, pass)) {
+        if (mClient == null || !mClient.send(REQ_PASS, new String[] { pass })) {
             disconnect();
             Toast.makeText(mMainActivity, "Not connected to device", Toast.LENGTH_SHORT).show();
         }
     }
 
     public void logout() {
-        if (mClient == null || !mClient.send(REQ_LOGOUT, "")) {
+        if (mClient == null || !mClient.send(REQ_LOGOUT, new String[] { "" })) {
             disconnect();
             Toast.makeText(mMainActivity, "Not connected to device", Toast.LENGTH_SHORT).show();
         }
@@ -127,70 +129,88 @@ public class Connection {
         private volatile boolean mConnectionLost;
         private int mSavedSerial;
 
-        enum Action { NONE, LOGOUT, OPTION }
-        private Action mAction;
-
         public Client(DiscoveryItem discoveryItem) {
             mDiscoveryItem = discoveryItem;
             mDataToSend = new ConcurrentLinkedQueue<>();
             mConnectionLost = false;
             mSavedSerial = new Random().nextInt(13469);
-            mAction = Action.NONE;
         }
 
         public DiscoveryItem getDiscoveryItem() {
             return mDiscoveryItem;
         }
 
-        public synchronized boolean send(String request, String data) {
+        public synchronized boolean send(String request, String[] data) {
             if (mConnectionLost)
                 return false;
 
             mSavedSerial = (mSavedSerial * 13469 + 2671) % 65535;
-            int opt = 0, ver = 0;
+            String opt = "0", ver = "0";
+            String additional = data[0];
             switch (request)
             {
                 case REQ_LOGOUT:
-                    mAction = Action.LOGOUT;
                     break;
                 case REQ_OPTION:
-                    mAction = Action.OPTION;
+                    additional = "";
                 case REQ_UPDATE:
-                    opt = 0;
-                    ver = 0;
+                    if (data.length < 2) {
+                        Log.e("Connection", "Sending error: both option and version are required");
+                        return false;
+                    }
+                    opt = data[0];
+                    ver = data[1];
+                    if (data.length > 2)
+                        additional = data[2];
                     break;
             }
-            mDataToSend.add(String.format("%s %d %d %d %s", request, opt, ver, mSavedSerial, data));
+            mDataToSend.add(String.format("%s %s %s %d %s", request, opt, ver, mSavedSerial, additional));
             return true;
         }
 
-        public void recv(final String data) {
-            if (mAction == Action.OPTION) {
-                //TODO: send update
-            }
-            else {
-                mMainActivity.runOnUiThread(new Runnable() {
-                    @Override
-                    public void run() {
-                        new AlertDialog.Builder(mMainActivity)
-                                .setTitle("Output")
-                                .setMessage(data)
-                                .setNeutralButton(android.R.string.ok, new DialogInterface.OnClickListener() {
-                                    public void onClick(DialogInterface dialog, int which) {
-                                    }
-                                })
-                                .setIcon(android.R.drawable.ic_dialog_alert)
-                                .show();
+        private void outputMsg(final String msg) {
+            mMainActivity.runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    new AlertDialog.Builder(mMainActivity)
+                            .setTitle("Output")
+                            .setMessage(msg)
+                            .setNeutralButton(android.R.string.ok, new DialogInterface.OnClickListener() {
+                                public void onClick(DialogInterface dialog, int which) {
+                                }
+                            })
+                            .setIcon(android.R.drawable.ic_dialog_alert)
+                            .show();
+                }
+            });
+        }
+
+        public void recv(String data) {
+            String[] parts = data.split(" ", 2);
+            if (parts.length < 2)
+                return;
+            switch (parts[0]) {
+                case "UPDATE_OPT": {
+                    int opt = Integer.parseInt(parts[1]);
+                    CommandItem ci = CommandsFragment.getCommandItem(opt);
+                    if (ci != null)
+                        send(REQ_UPDATE, new String[] { String.valueOf(ci.getOption()), String.valueOf(ci.getVersion()), ci.getCommand() });
+                    break;
+                }
+                case "RESULT":
+                    if (parts[1].equals("logout")) {
+                        outputMsg("Logged out");
+                        close();
                     }
-                });
-                if (mAction == Action.LOGOUT && data.contains("Logged out"))
-                    close();
+                    break;
+                case "OUTPUT":
+                    outputMsg(parts[1]);
+                    break;
             }
         }
 
         public void close() {
             mConnectionLost = true;
-            mAction = Action.NONE;
         }
 
         public boolean connected() {
@@ -219,7 +239,7 @@ public class Connection {
                             final byte array[] = new byte[4096];
                             int i = reader.read(array);
                             if (i > 0) {
-                                recv(new String(array, "UTF-8"));
+                                recv(new String(array, "UTF-8").split("\n")[0]);
                             }
                             else if (i == -1) {
                                 mConnectionLost = true;

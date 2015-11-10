@@ -13,17 +13,20 @@ PORT = 2000
 BUFLEN = 1024
 NUMOPT = 16
 
-BAD_REQUEST_TEMPLATE = "Error: Syntax Error. [USER/PASS/LOGOUT/OPTION/UPDATE] [Opt#/0] [Ver#/0] [(Random Int)Serial#] [Text/.]\n"
-UPDATED_TEMPLATE = "Option {} updated to version {}.\n"
-BAD_METHOD_TEMPLATE = "Method {} is not supported.\n"
-NOT_UPDATED_TEMPLATE = "Option {} is not updated.\n"
-USER_OK_TEMPLATE = "Password:\n"
-USER_BAD_TEMPLATE = "Error: Bad Credential.\n"
-PASSWORD_OK_TEMPLATE = "Logged in.\n"
-LOGOUT_TEMPLATE = "Logged out.\n"
-UNAUTHORIZED_TEMPLATE = "Please log in.\n"
+#[keyword] [message]
+#OUTPUT [message to output to user]
 
-password = "password"
+BAD_REQUEST_TEMPLATE = "OUTPUT Error: Syntax Error. [USER/PASS/LOGOUT/OPTION/UPDATE] [Opt#/0] [Ver#/0] [(Random Int)Serial#] [Text/.]\n"
+UPDATED_TEMPLATE = "UPDATED {} {}\n" #option version
+NOT_UPDATED_TEMPLATE = "UPDATE_OPT {}\n" #option
+BAD_METHOD_TEMPLATE = "OUTPUT Method {} is not supported\n"
+USER_OK_TEMPLATE = "INPUT password\n"
+USER_BAD_TEMPLATE = "OUTPUT Error: Bad Credential\n"
+PASSWORD_OK_TEMPLATE = "OUTPUT Logged in\n"
+LOGOUT_TEMPLATE = "RESULT logout\n"
+UNAUTHORIZED_TEMPLATE = "OUTPUT Please log in\n"
+
+password = "a"
 auth = -1
 savedSerial = 0
 
@@ -51,11 +54,12 @@ def invalidateOptionList():
 
 def error(msg):
     print(msg)
-    sys.exit(1)
+    sys.exit(1)	
 
 def run(number):
     #creates a new subprocess without blocking
     subprocess.Popen(optionList[number], shell=True)
+    #print(optionList[number])
     return 0
 
 def processRequest(data, sockfd):
@@ -92,7 +96,7 @@ def processRequest(data, sockfd):
         optionVersion[number] = version
         response = UPDATED_TEMPLATE.format(number, version)
         sockfd.send(response.encode('utf-8'))
-        return 0
+        return run(number)
     elif (method == "OPTION"):
         if (optionVersion[number] == version and optionValid[number] >= 0):
             return run(number)
