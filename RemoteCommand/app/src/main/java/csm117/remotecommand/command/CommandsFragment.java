@@ -63,9 +63,9 @@ public class CommandsFragment extends Fragment implements AdapterView.OnItemClic
 
     @Override
     public void onCreateContextMenu(ContextMenu menu, View v, ContextMenu.ContextMenuInfo menuInfo) {
-        menu.add(Menu.NONE, CONTEXT_MENU_EDIT_ITEM, Menu.NONE, "Edit");
-        menu.add(Menu.NONE, CONTEXT_MENU_DELETE_ITEM, Menu.NONE, "Delete");
-        menu.add(Menu.NONE, CONTEXT_MENU_SWITCH_POSITION, Menu.NONE, "Switch");
+        menu.add(0, CONTEXT_MENU_EDIT_ITEM, Menu.NONE, "Edit");
+        menu.add(0, CONTEXT_MENU_DELETE_ITEM, Menu.NONE, "Delete");
+        menu.add(0, CONTEXT_MENU_SWITCH_POSITION, Menu.NONE, "Switch");
     }
 
     private void editCommand(int position) {
@@ -82,11 +82,10 @@ public class CommandsFragment extends Fragment implements AdapterView.OnItemClic
         ft.commit();
     }
 
-    //TODO: way to change the order of the commands
-
-
     @Override
     public boolean onContextItemSelected(MenuItem item) {
+        if (item.getGroupId() != 0)
+            return false;
         AdapterView.AdapterContextMenuInfo info= (AdapterView.AdapterContextMenuInfo) item.getMenuInfo();
 
         switch (item.getItemId()) {
@@ -108,7 +107,7 @@ public class CommandsFragment extends Fragment implements AdapterView.OnItemClic
 
     public void loadCommands() {
         //load commands from database
-        mCommands = RealmDB.getInstance().selectAll();
+        mCommands = RealmDB.getInstance().selectCommands();
         if (RealmDB.getInstance().isFirstTime() && mCommands.isEmpty()) { //when user installs app and database does not exist yet then load the preset commands
             //Preset Commands
             RealmDB.getInstance().create("Logout Windows", "shutdown -l", mCommands);

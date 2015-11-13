@@ -22,8 +22,8 @@ UPDATED_TEMPLATE = "UPDATED {} {}\n" #option version
 NOT_UPDATED_TEMPLATE = "UPDATE_OPT {}\n" #option
 BAD_METHOD_TEMPLATE = "OUTPUT Method {} is not supported\n"
 USER_OK_TEMPLATE = "INPUT password\n"
-USER_BAD_TEMPLATE = "OUTPUT Error: Bad Credential\n"
-PASSWORD_OK_TEMPLATE = "OUTPUT Logged in\n"
+USER_BAD_TEMPLATE = "PW_BAD Error: Bad Credential\n"
+PASSWORD_OK_TEMPLATE = "PW_OK Logged in\n"
 LOGOUT_TEMPLATE = "RESULT logout\n"
 UNAUTHORIZED_TEMPLATE = "OUTPUT Please log in\n"
 
@@ -181,7 +181,7 @@ class mainWindow(Frame):
             total *= ord(c)
             total += ord(c)
             total %= 128
-            passwordFile.write(chr(total))
+            passwordFile.write(hex(total)[2:].zfill(2))
         passwordFile.close()
         self.master.destroy()
         

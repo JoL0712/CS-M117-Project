@@ -45,6 +45,24 @@ public class Connection {
 
     public static void setMainActivity(MainActivity mainActivity) { mMainActivity = mainActivity; }
 
+    private String hashPassword(String pass) {
+        //hash password
+        int total = 133;
+        StringBuilder result = new StringBuilder();
+        for (char c : pass.toCharArray()) {
+            total *= (int) c;
+            total += (int) c;
+            total %= 128;
+            StringBuilder sb = new StringBuilder();
+            sb.append(Integer.toHexString(total));
+            if (sb.length() < 2) {
+                sb.insert(0, '0'); // pad with leading zero if needed
+            }
+            result.append(sb.toString());
+        }
+        return result.toString();
+    }
+
     public void sendCommand(CommandItem commandItem) {
         if (mClient == null || !mClient.send(REQ_OPTION, new String[] { String.valueOf(commandItem.getOption()), String.valueOf(commandItem.getVersion()) })) {
             Toast.makeText(mMainActivity, "Please connect to a device first", Toast.LENGTH_SHORT).show();
@@ -78,7 +96,7 @@ public class Connection {
     }
 
     public void connect(final DiscoveryItem discoveryItem) {
-        if (mClient != null && mClient.connected() && mClient.getDiscoveryItem().getIPAddress().equals(discoveryItem.getIPAddress()))
+        if (mClient != null && mClient.connected() && mClient.getDiscoveryItem().getIpAddress().equals(discoveryItem.getIpAddress()))
             return;
         new AsyncTask<Void, Void, Void>() {
             ProgressDialog pd;
@@ -101,26 +119,31 @@ public class Connection {
             protected void onPostExecute(Void aVoid) {
                 super.onPostExecute(aVoid);
                 pd.dismiss();
-                AlertDialog.Builder builder = new AlertDialog.Builder(mMainActivity);
-                builder.setTitle("Password");
-                final EditText input = new EditText(mMainActivity);
-                input.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_PASSWORD);
-                builder.setView(input);
+                if (discoveryItem.getPasswordHash() == null) {
+                    AlertDialog.Builder builder = new AlertDialog.Builder(mMainActivity);
+                    builder.setTitle("Password");
+                    final EditText input = new EditText(mMainActivity);
+                    input.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_PASSWORD);
+                    builder.setView(input);
 
-                builder.setPositiveButton("OK", new DialogInterface.OnClickListener() {
-                    @Override
-                    public void onClick(DialogInterface dialog, int which) {
-                        login(input.getText().toString());
-                    }
-                });
-                builder.setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
-                    @Override
-                    public void onClick(DialogInterface dialog, int which) {
-                        disconnect();
-                        dialog.cancel();
-                    }
-                });
-                builder.show();
+                    builder.setPositiveButton("OK", new DialogInterface.OnClickListener() {
+                        @Override
+                        public void onClick(DialogInterface dialog, int which) {
+                            login(hashPassword(input.getText().toString()));
+                        }
+                    });
+                    builder.setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
+                        @Override
+                        public void onClick(DialogInterface dialog, int which) {
+                            disconnect();
+                            dialog.cancel();
+                        }
+                    });
+                    builder.show();
+                }
+                else {
+                    login(discoveryItem.getPasswordHash());
+                }
             }
         }.execute();
     }
@@ -153,16 +176,7 @@ public class Connection {
             switch (request)
             {
                 case REQ_PASS:
-                    //hash password
-                    int total = 133;
-                    String tempStr = "";
-                    for (char c : additional.toCharArray()) {
-                        total *= (int) c;
-                        total += (int) c;
-                        total %= 128;
-                        tempStr += (char) (total);
-                    }
-                    additional = tempStr;
+                    mDiscoveryItem.setPasswordHash(additional);
                     break;
                 case REQ_LOGOUT:
                     break;
@@ -179,12 +193,7 @@ public class Connection {
                         additional = data[2];
                     break;
             }
-            byte[] one = String.format("%s %s %s %d ", request, opt, ver, mSavedSerial).getBytes();
-            byte[] two = additional.getBytes();
-            byte[] combined = new byte[one.length + two.length];
-            System.arraycopy(one, 0, combined, 0, one.length);
-            System.arraycopy(two, 0, combined, one.length, two.length);
-            mDataToSend.add(combined);
+            mDataToSend.add(String.format("%s %s %s %d %s", request, opt, ver, mSavedSerial, additional).getBytes());
             return true;
         }
 
@@ -223,8 +232,23 @@ public class Connection {
                         close();
                     }
                     break;
+                case "PW_OK":
+                    RealmDB.getInstance().insert(mDiscoveryItem);
+                    RealmDB.getInstance().close();
+                    mMainActivity.runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            Toast.makeText(mMainActivity, "Logged into " + mDiscoveryItem.getHostName(), Toast.LENGTH_SHORT).show();
+                        }
+                    });
+                    break;
                 case "OUTPUT":
                     outputMsg(parts[1]);
+                    break;
+                case "PW_BAD":
+                    mDiscoveryItem.setPasswordHash(null);
+                    outputMsg(parts[1]);
+                    close();
                     break;
             }
         }
@@ -240,7 +264,7 @@ public class Connection {
         @Override
         public void run() {
             try {
-                mSocket = new Socket(mDiscoveryItem.getIPAddress(), PORT);
+                mSocket = new Socket(mDiscoveryItem.getIpAddress(), PORT);
                 mMainActivity.runOnUiThread(new Runnable() {
                     @Override
                     public void run() {

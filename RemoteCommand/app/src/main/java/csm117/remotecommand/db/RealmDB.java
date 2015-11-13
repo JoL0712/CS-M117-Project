@@ -7,6 +7,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 import csm117.remotecommand.command.CommandItem;
+import csm117.remotecommand.network.Discovery;
+import csm117.remotecommand.network.DiscoveryItem;
 import io.realm.Realm;
 import io.realm.RealmConfiguration;
 import io.realm.RealmQuery;
@@ -45,14 +47,14 @@ public class RealmDB {
 
     private Realm mRealm = null;
 
-    private void begin() {
+    private synchronized void begin() {
         if (mRealm != null) //cannot begin if last transaction has not been committed and closed
             return;
         mRealm = Realm.getDefaultInstance();
         mRealm.beginTransaction();
     }
 
-    public void close() {
+    public synchronized void close() {
         if (mRealm == null) //cannot close if begin() has not been called
             return;
         mRealm.commitTransaction();
@@ -103,12 +105,35 @@ public class RealmDB {
         }
     }
 
-    public List<CommandItem> selectAll() {
+    public List<CommandItem> selectCommands() {
         begin();
         RealmResults<CommandItem> results = mRealm.allObjectsSorted(CommandItem.class, "position", true);
         List<CommandItem> list = new ArrayList<>();
         for (CommandItem ci : results) {
             list.add(new CommandItem(ci));
+        }
+        return list;
+    }
+
+    public void insert(DiscoveryItem di) {
+        begin();
+        mRealm.copyToRealmOrUpdate(di);
+    }
+
+    public void delete(String ip) {
+        begin();
+        DiscoveryItem toDelete = mRealm.where(DiscoveryItem.class).equalTo("ipAddress", ip).findFirst();
+        if (toDelete != null) {
+            toDelete.removeFromRealm();
+        }
+    }
+
+    public List<DiscoveryItem> selectDevices() {
+        begin();
+        RealmResults<DiscoveryItem> results = mRealm.allObjects(DiscoveryItem.class);
+        List<DiscoveryItem> list = new ArrayList<>();
+        for (DiscoveryItem di : results) {
+            list.add(new DiscoveryItem(di));
         }
         return list;
     }

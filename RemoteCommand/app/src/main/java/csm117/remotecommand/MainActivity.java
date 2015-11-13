@@ -62,9 +62,6 @@ public class MainActivity extends AppCompatActivity {
         // as you specify a parent activity in AndroidManifest.xml.
         int id = item.getItemId();
         switch (id) {
-            case R.id.action_clear_devices:
-                mDiscoveryFragment.clear();
-                break;
             case R.id.action_logout:
                 Connection.getInstance().logout();
                 break;

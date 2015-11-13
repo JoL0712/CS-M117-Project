@@ -4,7 +4,10 @@ import android.os.Bundle;
 import android.support.annotation.Nullable;
 import android.support.design.widget.FloatingActionButton;
 import android.support.v4.app.Fragment;
+import android.view.ContextMenu;
 import android.view.LayoutInflater;
+import android.view.Menu;
+import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.AdapterView;
@@ -20,6 +23,7 @@ import java.util.Set;
 import csm117.remotecommand.R;
 import csm117.remotecommand.command.CommandItem;
 import csm117.remotecommand.command.CommandListViewAdapter;
+import csm117.remotecommand.db.RealmDB;
 
 /**
  * Created by John Lee on 10/26/2015.
@@ -31,6 +35,7 @@ public class DiscoveryFragment extends Fragment implements AdapterView.OnItemCli
     private Set<String> mIPAddresses;
     private DiscoveryListViewAdapter mAdapter = null;
     private static final int DISCOVER_TIMEOUT = 5000;
+    private final static int CONTEXT_MENU_DELETE_ITEM = 0;
 
     @Nullable
     @Override
@@ -42,10 +47,12 @@ public class DiscoveryFragment extends Fragment implements AdapterView.OnItemCli
 
         mDevices = new ArrayList<>();
         mIPAddresses = new HashSet<>();
+        loadDevices();
 
         mAdapter = new DiscoveryListViewAdapter(getActivity(), R.layout.discovery_list_item, mDevices);
         mListView.setAdapter(mAdapter);
         mListView.setOnItemClickListener(this);
+        registerForContextMenu(mListView);
 
         FloatingActionButton fab = (FloatingActionButton) view.findViewById(R.id.fab_find_devices);
         fab.setOnClickListener(new View.OnClickListener() {
@@ -57,7 +64,38 @@ public class DiscoveryFragment extends Fragment implements AdapterView.OnItemCli
         return view;
     }
 
-    //TODO: save devices, auto connect to last device when app starts
+    @Override
+    public void onCreateContextMenu(ContextMenu menu, View v, ContextMenu.ContextMenuInfo menuInfo) {
+        menu.add(1, CONTEXT_MENU_DELETE_ITEM, Menu.NONE, "Delete");
+    }
+
+    @Override
+    public boolean onContextItemSelected(MenuItem item) {
+        if (item.getGroupId() != 1)
+            return false;
+        AdapterView.AdapterContextMenuInfo info= (AdapterView.AdapterContextMenuInfo) item.getMenuInfo();
+
+        switch (item.getItemId()) {
+            case CONTEXT_MENU_DELETE_ITEM:
+                RealmDB.getInstance().delete(mDevices.get(info.position).getIpAddress());
+                RealmDB.getInstance().close();
+                mIPAddresses.remove(mDevices.get(info.position).getIpAddress());
+                mDevices.remove(info.position);
+                mAdapter.notifyDataSetChanged();
+                return true;
+        }
+        return false;
+    }
+
+    private void loadDevices() {
+        mDevices = RealmDB.getInstance().selectDevices();
+        for (DiscoveryItem di : mDevices) {
+            mIPAddresses.add(di.getIpAddress());
+        }
+        RealmDB.getInstance().close();
+    }
+
+    //TODO: auto connect to last device when app starts
 
     public void discover() {
         if (mDiscovery == null)
@@ -67,8 +105,8 @@ public class DiscoveryFragment extends Fragment implements AdapterView.OnItemCli
             public void callback(final List<InetAddress> addresses) {
                 for (InetAddress a : addresses) {
                     DiscoveryItem di = new DiscoveryItem(a.getHostName(), a.getHostAddress());
-                    if (!mIPAddresses.contains(di.getIPAddress())) {
-                        mIPAddresses.add(di.getIPAddress());
+                    if (!mIPAddresses.contains(di.getIpAddress())) {
+                        mIPAddresses.add(di.getIpAddress());
                         mDevices.add(di);
                     }
                 }
@@ -80,12 +118,6 @@ public class DiscoveryFragment extends Fragment implements AdapterView.OnItemCli
                 });
             }
         });
-    }
-
-    public void clear() {
-        mDevices.clear();
-        mIPAddresses.clear();
-        mAdapter.notifyDataSetChanged();
     }
 
     @Override
