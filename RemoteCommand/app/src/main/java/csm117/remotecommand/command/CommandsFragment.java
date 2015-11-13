@@ -32,7 +32,8 @@ public class CommandsFragment extends Fragment implements AdapterView.OnItemClic
     private ListView mListView = null;
     private static List<CommandItem> mCommands;
     private static CommandListViewAdapter mAdapter = null;
-    private final static int CONTEXT_MENU_EDIT_ITEM = 0, CONTEXT_MENU_DELETE_ITEM = 1;
+    private final static int CONTEXT_MENU_EDIT_ITEM = 0, CONTEXT_MENU_DELETE_ITEM = 1, CONTEXT_MENU_SWITCH_POSITION = 2;
+    private int mSwitchCommand = -1;
 
     @Nullable
     @Override
@@ -64,6 +65,7 @@ public class CommandsFragment extends Fragment implements AdapterView.OnItemClic
     public void onCreateContextMenu(ContextMenu menu, View v, ContextMenu.ContextMenuInfo menuInfo) {
         menu.add(Menu.NONE, CONTEXT_MENU_EDIT_ITEM, Menu.NONE, "Edit");
         menu.add(Menu.NONE, CONTEXT_MENU_DELETE_ITEM, Menu.NONE, "Delete");
+        menu.add(Menu.NONE, CONTEXT_MENU_SWITCH_POSITION, Menu.NONE, "Switch");
     }
 
     private void editCommand(int position) {
@@ -82,6 +84,7 @@ public class CommandsFragment extends Fragment implements AdapterView.OnItemClic
 
     //TODO: way to change the order of the commands
 
+
     @Override
     public boolean onContextItemSelected(MenuItem item) {
         AdapterView.AdapterContextMenuInfo info= (AdapterView.AdapterContextMenuInfo) item.getMenuInfo();
@@ -91,9 +94,13 @@ public class CommandsFragment extends Fragment implements AdapterView.OnItemClic
                 editCommand(info.position);
                 return true;
             case CONTEXT_MENU_DELETE_ITEM:
+                mSwitchCommand = -1;
                 RealmDB.getInstance().delete(mCommands, info.position);
                 RealmDB.getInstance().close();
                 mAdapter.notifyDataSetChanged();
+                return true;
+            case CONTEXT_MENU_SWITCH_POSITION:
+                mSwitchCommand = info.position;
                 return true;
         }
         return false;
@@ -113,6 +120,16 @@ public class CommandsFragment extends Fragment implements AdapterView.OnItemClic
 
     @Override
     public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+        if (mSwitchCommand >= 0) {
+            CommandItem temp = mCommands.get(mSwitchCommand);
+            mCommands.set(mSwitchCommand, mCommands.get(position));
+            mCommands.set(position, temp);
+            RealmDB.getInstance().updatePositions(mCommands);
+            RealmDB.getInstance().close();
+            mAdapter.notifyDataSetChanged();
+            mSwitchCommand = -1;
+            return;
+        }
         //send the command to device
         Connection.getInstance().sendCommand((CommandItem) mListView.getItemAtPosition(position));
     }

@@ -3,6 +3,7 @@
 #connect to this server from Android app
 #send commands over
 
+from Tkinter import *
 import sys
 import subprocess
 import socket
@@ -26,7 +27,7 @@ PASSWORD_OK_TEMPLATE = "OUTPUT Logged in\n"
 LOGOUT_TEMPLATE = "RESULT logout\n"
 UNAUTHORIZED_TEMPLATE = "OUTPUT Please log in\n"
 
-password = "a"
+passwordHash = ""
 auth = -1
 savedSerial = 0
 
@@ -34,6 +35,8 @@ optionList = [None] * NUMOPT
 optionValid = [None] * NUMOPT
 optionVersion = [None] * NUMOPT
 
+SETTINGS_FILE = "settings.dat"
+        
 def nextSerial():
     global savedSerial
     result = (savedSerial * 13469 + 2671) % 65535
@@ -105,7 +108,7 @@ def processRequest(data, sockfd):
             sockfd.send(response.encode('utf-8'))
             return 0
     elif (method == "PASS"):
-        if (additional == password):
+        if (additional == passwordHash):
             auth = 1
             savedSerial = serial
             sockfd.send(PASSWORD_OK_TEMPLATE.encode('utf-8'))
@@ -127,11 +130,14 @@ def do(newsockfd):
     data = None
     #read client's message
     try:
-        data = newsockfd.recv(BUFLEN).decode()
+        data = newsockfd.recv(BUFLEN).decode('utf-8')
     except:
         pass
     else:
-        print("Here is the message: \n%s\n" % data)
+        if (auth == -1):
+            print("Attempting to log in...")
+        else:
+            print("Here is the message: \n%s\n" % data)
         #process request
         n = processRequest(data, newsockfd)
         #process failed
@@ -152,49 +158,94 @@ def discover(ip_subnet, udp_sock):
     for j in range(256): #send to all local network ip address within subnet
         udp_sock.sendto("RemoteCommand".encode('utf-8'), (ip_subnet + str(j), PORT))
 
+class mainWindow(Frame):
+    def __init__(self,master):
+        Frame.__init__(self, master, width=300, height=50)
+        self.master=master
+        self.master.width = 150
+        self.l=Label(master,text="Create a Password")
+        self.l.pack()
+        self.e=Entry(master)
+        self.e.pack()
+        self.b=Button(master,text='Ok',command=self.cleanup)
+        self.b.pack()
+        self.pack()
+	def pack(self, *args, **kwargs):
+		Frame.pack(self, *args, **kwargs)
+		self.pack_propagate(False)
+    def cleanup(self):
+        passwordFile = open(SETTINGS_FILE, 'wb')
+        chars = list(self.e.get())
+        total = 133
+        for c in chars:
+            total *= ord(c)
+            total += ord(c)
+            total %= 128
+            passwordFile.write(chr(total))
+        passwordFile.close()
+        self.master.destroy()
+        
 def main():
-    sockfd = None
-    newsockfd = None
-    ip_subnet = get_ip_address().rsplit('.', 1)[0] + '.'
-    
+    global passwordHash
     try:
-        udp_sock = socket.socket(socket.AF_INET, # Internet
-                             socket.SOCK_DGRAM) # UDP
-        udp_sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        udp_sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
-        sockfd = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    except:
-        error("ERROR opening socket")
+        passwordFile = open(SETTINGS_FILE, 'rb')
+        passwordFile.close()
+    except: 
+        root=Tk()
+        root.wm_title("Password")
+        m=mainWindow(root)
+        root.mainloop()
+
     try:
-        sockfd.bind(('', PORT))
+        passwordFile = open(SETTINGS_FILE, 'rb')
     except:
-        error("ERROR on binding")
+        sys.exit(1)
+    else:
+        passwordHash = passwordFile.read()
+        passwordFile.close()
 
-    cli_addr = None
-
-    cleanCache()
-
-    sockfd.settimeout(1)
-    sockfd.listen(1) 
-
-    while(True):
-        discover(ip_subnet, udp_sock)
+        sockfd = None
+        newsockfd = None
+        ip_subnet = get_ip_address().rsplit('.', 1)[0] + '.'
+        
         try:
-            #accept connections
-            newsockfd, cli_addr = sockfd.accept()
+            udp_sock = socket.socket(socket.AF_INET, # Internet
+                                 socket.SOCK_DGRAM) # UDP
+            udp_sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            udp_sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
+            sockfd = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         except:
-            continue
-        else:
-            print("Attempting to establish connection with " + str(cli_addr))
-            invalidateOptionList()
-            newsockfd.settimeout(60)
-            do(newsockfd)
-            while (auth >= 0):
+            error("ERROR opening socket")
+        try:
+            sockfd.bind(('', PORT))
+        except:
+            error("ERROR on binding")
+
+        cli_addr = None
+
+        cleanCache()
+
+        sockfd.settimeout(1)
+        sockfd.listen(1) 
+
+        while(True):
+            discover(ip_subnet, udp_sock)
+            try:
+                #accept connections
+                newsockfd, cli_addr = sockfd.accept()
+            except:
+                continue
+            else:
+                print("Attempting to establish connection with " + str(cli_addr))
+                invalidateOptionList()
+                newsockfd.settimeout(60)
                 do(newsockfd)
-            newsockfd.close()
-            print("Closing connection")
-            
-    sockfd.close()
+                while (auth >= 0):
+                    do(newsockfd)
+                newsockfd.close()
+                print("Closing connection")
+                
+        sockfd.close()
     return 0 
 
 main()

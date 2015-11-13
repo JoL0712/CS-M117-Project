@@ -20,6 +20,9 @@ import java.io.OutputStreamWriter;
 import java.io.UnsupportedEncodingException;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 import java.util.Random;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
@@ -124,7 +127,7 @@ public class Connection {
 
     private static class Client extends Thread {
         private Socket mSocket = null;
-        private ConcurrentLinkedQueue<String> mDataToSend;
+        private ConcurrentLinkedQueue<byte[]> mDataToSend;
         private DiscoveryItem mDiscoveryItem;
         private volatile boolean mConnectionLost;
         private int mSavedSerial;
@@ -149,6 +152,18 @@ public class Connection {
             String additional = data[0];
             switch (request)
             {
+                case REQ_PASS:
+                    //hash password
+                    int total = 133;
+                    String tempStr = "";
+                    for (char c : additional.toCharArray()) {
+                        total *= (int) c;
+                        total += (int) c;
+                        total %= 128;
+                        tempStr += (char) (total);
+                    }
+                    additional = tempStr;
+                    break;
                 case REQ_LOGOUT:
                     break;
                 case REQ_OPTION:
@@ -164,7 +179,12 @@ public class Connection {
                         additional = data[2];
                     break;
             }
-            mDataToSend.add(String.format("%s %s %s %d %s", request, opt, ver, mSavedSerial, additional));
+            byte[] one = String.format("%s %s %s %d ", request, opt, ver, mSavedSerial).getBytes();
+            byte[] two = additional.getBytes();
+            byte[] combined = new byte[one.length + two.length];
+            System.arraycopy(one, 0, combined, 0, one.length);
+            System.arraycopy(two, 0, combined, one.length, two.length);
+            mDataToSend.add(combined);
             return true;
         }
 
@@ -253,10 +273,10 @@ public class Connection {
             rcvr.start();
             while (!Thread.currentThread().isInterrupted() && !mConnectionLost) {
                 try {
-                    String toSend = mDataToSend.poll();
+                    byte[] toSend = mDataToSend.poll();
                     if (toSend != null) {
                         OutputStream writer = mSocket.getOutputStream();
-                        writer.write(toSend.getBytes());
+                        writer.write(toSend);
                         writer.flush();
                         mMainActivity.runOnUiThread(new Runnable() {
                             @Override
