@@ -3,7 +3,7 @@
 #connect to this server from Android app
 #send commands over
 
-from Tkinter import *
+from tkinter import *
 import sys
 import subprocess
 import socket
@@ -170,9 +170,9 @@ class mainWindow(Frame):
         self.b=Button(master,text='Ok',command=self.cleanup)
         self.b.pack()
         self.pack()
-	def pack(self, *args, **kwargs):
-		Frame.pack(self, *args, **kwargs)
-		self.pack_propagate(False)
+    def pack(self, *args, **kwargs):
+        Frame.pack(self, *args, **kwargs)
+        self.pack_propagate(False)
     def cleanup(self):
         passwordFile = open(SETTINGS_FILE, 'wb')
         chars = list(self.e.get())
@@ -181,7 +181,8 @@ class mainWindow(Frame):
             total *= ord(c)
             total += ord(c)
             total %= 128
-            passwordFile.write(hex(total)[2:].zfill(2))
+            hexData = hex(total)[2:].zfill(2)
+            passwordFile.write(hexData.encode('utf-8'))
         passwordFile.close()
         self.master.destroy()
         
