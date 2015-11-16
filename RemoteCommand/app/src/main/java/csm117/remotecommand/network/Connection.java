@@ -233,11 +233,12 @@ public class Connection {
                     }
                     break;
                 case "PW_OK":
-                    RealmDB.getInstance().insert(mDiscoveryItem);
-                    RealmDB.getInstance().close();
                     mMainActivity.runOnUiThread(new Runnable() {
                         @Override
                         public void run() {
+                            RealmDB.getInstance().update(mDiscoveryItem);
+                            RealmDB.getInstance().updateLastDevice(mDiscoveryItem);
+                            RealmDB.getInstance().close();
                             Toast.makeText(mMainActivity, "Logged into " + mDiscoveryItem.getHostName(), Toast.LENGTH_SHORT).show();
                         }
                     });

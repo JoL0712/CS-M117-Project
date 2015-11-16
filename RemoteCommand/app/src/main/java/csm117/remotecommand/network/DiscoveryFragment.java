@@ -61,6 +61,10 @@ public class DiscoveryFragment extends Fragment implements AdapterView.OnItemCli
                 discover();
             }
         });
+
+        DiscoveryItem di = RealmDB.getInstance().selectLastDevice();
+        if (di != null)
+            Connection.getInstance().connect(new DiscoveryItem(di));
         return view;
     }
 
@@ -94,8 +98,6 @@ public class DiscoveryFragment extends Fragment implements AdapterView.OnItemCli
         }
         RealmDB.getInstance().close();
     }
-
-    //TODO: auto connect to last device when app starts
 
     public void discover() {
         if (mDiscovery == null)

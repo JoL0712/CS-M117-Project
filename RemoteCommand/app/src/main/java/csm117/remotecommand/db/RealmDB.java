@@ -1,18 +1,18 @@
 package csm117.remotecommand.db;
 
 import android.content.Context;
-import android.widget.Toast;
 
 import java.util.ArrayList;
 import java.util.List;
 
 import csm117.remotecommand.command.CommandItem;
-import csm117.remotecommand.network.Discovery;
 import csm117.remotecommand.network.DiscoveryItem;
+import csm117.remotecommand.network.LastDevice;
 import io.realm.Realm;
 import io.realm.RealmConfiguration;
-import io.realm.RealmQuery;
+import io.realm.RealmObject;
 import io.realm.RealmResults;
+import io.realm.annotations.PrimaryKey;
 
 /**
  * Created by John Lee on 11/9/2015.
@@ -115,7 +115,21 @@ public class RealmDB {
         return list;
     }
 
-    public void insert(DiscoveryItem di) {
+    public void updateLastDevice(DiscoveryItem di) {
+        begin();
+        mRealm.copyToRealmOrUpdate(new LastDevice(di.getIpAddress()));
+    }
+
+    public DiscoveryItem selectLastDevice() {
+        begin();
+        LastDevice result = mRealm.where(LastDevice.class).equalTo("key", 0).findFirst();
+        if (result != null && result.getIpAddress() != null) {
+            return mRealm.where(DiscoveryItem.class).equalTo("ipAddress", result.getIpAddress()).findFirst();
+        }
+        return null;
+    }
+
+    public void update(DiscoveryItem di) {
         begin();
         mRealm.copyToRealmOrUpdate(di);
     }
