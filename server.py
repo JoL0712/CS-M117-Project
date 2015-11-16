@@ -202,7 +202,7 @@ def main():
     except:
         sys.exit(1)
     else:
-        passwordHash = passwordFile.read()
+        passwordHash = passwordFile.read().decode('utf-8')
         passwordFile.close()
 
         sockfd = None

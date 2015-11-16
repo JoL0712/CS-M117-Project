@@ -274,53 +274,58 @@ public class Connection {
                 });
             } catch (IOException e) {
                 e.printStackTrace();
+                mConnectionLost = true;
             }
-            Thread rcvr = new Thread(new Runnable() {
-                @Override
-                public void run() {
-                    while (!Thread.currentThread().isInterrupted()) {
-                        try {
-                            InputStream reader = mSocket.getInputStream();
-                            final byte array[] = new byte[4096];
-                            int i = reader.read(array);
-                            if (i > 0) {
-                                recv(new String(array, "UTF-8").split("\n")[0]);
+            if (!mConnectionLost) {
+                Thread rcvr = new Thread(new Runnable() {
+                    @Override
+                    public void run() {
+                        while (!Thread.currentThread().isInterrupted()) {
+                            try {
+                                InputStream reader = mSocket.getInputStream();
+                                final byte array[] = new byte[4096];
+                                int i = reader.read(array);
+                                if (i > 0) {
+                                    recv(new String(array, "UTF-8").split("\n")[0]);
+                                }
+                                else if (i == -1) {
+                                    mConnectionLost = true;
+                                }
+                            } catch (IOException e) {
+                                e.printStackTrace();
                             }
-                            else if (i == -1) {
-                                mConnectionLost = true;
-                            }
-                        } catch (IOException e) {
-                            e.printStackTrace();
                         }
                     }
-                }
-            });
-            rcvr.start();
-            while (!Thread.currentThread().isInterrupted() && !mConnectionLost) {
-                try {
-                    byte[] toSend = mDataToSend.poll();
-                    if (toSend != null) {
-                        OutputStream writer = mSocket.getOutputStream();
-                        writer.write(toSend);
-                        writer.flush();
-                        mMainActivity.runOnUiThread(new Runnable() {
-                            @Override
-                            public void run() {
-                                Toast.makeText(mMainActivity, "Command Sent!", Toast.LENGTH_SHORT).show();
-                            }
-                        });
+                });
+                rcvr.start();
+                while (!Thread.currentThread().isInterrupted() && !mConnectionLost) {
+                    try {
+                        byte[] toSend = mDataToSend.poll();
+                        if (toSend != null) {
+                            OutputStream writer = mSocket.getOutputStream();
+                            writer.write(toSend);
+                            writer.flush();
+                            mMainActivity.runOnUiThread(new Runnable() {
+                                @Override
+                                public void run() {
+                                    Toast.makeText(mMainActivity, "Command Sent!", Toast.LENGTH_SHORT).show();
+                                }
+                            });
+                        }
+                    } catch (IOException e) {
+                        e.printStackTrace();
                     }
+                }
+                mConnectionLost = true;
+                rcvr.interrupt();
+                mDataToSend.clear();
+            }
+            if (mSocket != null) {
+                try {
+                    mSocket.close();
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
-            }
-            mConnectionLost = true;
-            rcvr.interrupt();
-            mDataToSend.clear();
-            try {
-                mSocket.close();
-            } catch (IOException e) {
-                e.printStackTrace();
             }
             mMainActivity.runOnUiThread(new Runnable() {
                 @Override
