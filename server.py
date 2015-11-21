@@ -3,7 +3,10 @@
 #connect to this server from Android app
 #send commands over
 
-from tkinter import *
+try:
+    from Tkinter import *
+except ImportError:
+    from tkinter import *
 import sys
 import subprocess
 import socket

@@ -110,6 +110,19 @@ public class CommandsFragment extends Fragment implements AdapterView.OnItemClic
         mCommands = RealmDB.getInstance().selectCommands();
         if (RealmDB.getInstance().isFirstTime() && mCommands.isEmpty()) { //when user installs app and database does not exist yet then load the preset commands
             //Preset Commands
+            RealmDB.getInstance().create("Left", "key-press.bat {LEFT}", mCommands);
+            RealmDB.getInstance().create("Right", "key-press.bat {RIGHT}", mCommands);
+            RealmDB.getInstance().create("Up", "key-press.bat {UP}", mCommands);
+            RealmDB.getInstance().create("Down", "key-press.bat {DOWN}", mCommands);
+            RealmDB.getInstance().create("Esc", "key-press.bat {ESC}", mCommands);
+            RealmDB.getInstance().create("Space", "key-press.bat \" \"", mCommands);
+            RealmDB.getInstance().create("Enter", "key-press.bat {ENTER}", mCommands);
+            RealmDB.getInstance().create("Close Program", "key-press.bat %{F4}", mCommands);
+            RealmDB.getInstance().create("Open Google", "start \"\" \"www.google.com\"", mCommands);
+            RealmDB.getInstance().create("New Tab", "key-press.bat ^t", mCommands);
+            RealmDB.getInstance().create("Close Tab", "key-press.bat ^w", mCommands);
+            RealmDB.getInstance().create("Open Notepad", "start notepad", mCommands);
+            RealmDB.getInstance().create("Open Excel", "start excel", mCommands);
             RealmDB.getInstance().create("Logout Windows", "shutdown -l", mCommands);
             RealmDB.getInstance().create("Restart Windows", "shutdown -r", mCommands);
             RealmDB.getInstance().create("Shutdown Windows", "shutdown -s", mCommands);

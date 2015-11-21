@@ -104,7 +104,7 @@ public class Connection {
             @Override
             protected void onPreExecute() {
                 super.onPreExecute();
-                pd = ProgressDialog.show(mMainActivity, "Connecting...", "Attempting to connect to " + discoveryItem.getHostName(), true, false);
+                pd = ProgressDialog.show(mMainActivity, "Connecting...", "Attempting to connect to " + discoveryItem.getIpAddress(), true, false);
             }
 
             @Override
@@ -239,7 +239,7 @@ public class Connection {
                             RealmDB.getInstance().update(mDiscoveryItem);
                             RealmDB.getInstance().updateLastDevice(mDiscoveryItem);
                             RealmDB.getInstance().close();
-                            Toast.makeText(mMainActivity, "Logged into " + mDiscoveryItem.getHostName(), Toast.LENGTH_SHORT).show();
+                            Toast.makeText(mMainActivity, "Logged into " + mDiscoveryItem.getIpAddress(), Toast.LENGTH_SHORT).show();
                         }
                     });
                     break;
@@ -269,7 +269,7 @@ public class Connection {
                 mMainActivity.runOnUiThread(new Runnable() {
                     @Override
                     public void run() {
-                        mMainActivity.setTitle("Connected to " + mDiscoveryItem.getHostName());
+                        mMainActivity.setTitle("Connected to " + mDiscoveryItem.getIpAddress());
                     }
                 });
             } catch (IOException e) {

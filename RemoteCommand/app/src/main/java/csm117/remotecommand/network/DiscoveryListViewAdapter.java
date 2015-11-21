@@ -26,7 +26,7 @@ public class DiscoveryListViewAdapter extends ArrayAdapter<DiscoveryItem> {
     }
 
     private class ViewHolder {
-        TextView hostName, ipAddr;
+        TextView ipAddr;
     }
 
     public View getView(int position, View convertView, ViewGroup parent) {
@@ -37,13 +37,11 @@ public class DiscoveryListViewAdapter extends ArrayAdapter<DiscoveryItem> {
         if (convertView == null) {
             convertView = mInflater.inflate(R.layout.discovery_list_item, null);
 			holder = new ViewHolder();
-            holder.hostName = (TextView) convertView.findViewById(R.id.host_name);
             holder.ipAddr = (TextView) convertView.findViewById(R.id.ip_addr);
 			convertView.setTag(holder);
 		} else
 			holder = (ViewHolder) convertView.getTag();
 
-        holder.hostName.setText(discoveryItem.getHostName());
         holder.ipAddr.setText(discoveryItem.getIpAddress());
 
 		return convertView;
