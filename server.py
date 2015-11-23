@@ -3,10 +3,31 @@
 #connect to this server from Android app
 #send commands over
 
-try:
-    from Tkinter import *
-except ImportError:
-    from tkinter import *
+import platform
+if platform.system() == 'Windows':
+	try:
+		from Tkinter import *
+	except ImportError:
+		from tkinter import *
+	
+	class mainWindow(Frame):
+		def __init__(self,master):
+		    Frame.__init__(self, master, width=300, height=50)
+		    self.master=master
+		    self.master.width = 150
+		    self.l=Label(master,text="Create a Password")
+		    self.l.pack()
+		    self.e=Entry(master)
+		    self.e.pack()
+		    self.b=Button(master,text='Ok',command=self.cleanup)
+		    self.b.pack()
+		    self.pack()
+		def pack(self, *args, **kwargs):
+		    Frame.pack(self, *args, **kwargs)
+		    self.pack_propagate(False)
+		def cleanup(self):
+		    savePassword(self.e.get())
+		    self.master.destroy()
 import sys
 import subprocess
 import socket
@@ -161,33 +182,17 @@ def discover(ip_subnet, udp_sock):
     for j in range(256): #send to all local network ip address within subnet
         udp_sock.sendto("RemoteCommand".encode('utf-8'), (ip_subnet + str(j), PORT))
 
-class mainWindow(Frame):
-    def __init__(self,master):
-        Frame.__init__(self, master, width=300, height=50)
-        self.master=master
-        self.master.width = 150
-        self.l=Label(master,text="Create a Password")
-        self.l.pack()
-        self.e=Entry(master)
-        self.e.pack()
-        self.b=Button(master,text='Ok',command=self.cleanup)
-        self.b.pack()
-        self.pack()
-    def pack(self, *args, **kwargs):
-        Frame.pack(self, *args, **kwargs)
-        self.pack_propagate(False)
-    def cleanup(self):
-        passwordFile = open(SETTINGS_FILE, 'wb')
-        chars = list(self.e.get())
-        total = 133
-        for c in chars:
-            total *= ord(c)
-            total += ord(c)
-            total %= 128
-            hexData = hex(total)[2:].zfill(2)
-            passwordFile.write(hexData.encode('utf-8'))
-        passwordFile.close()
-        self.master.destroy()
+def savePassword(password):
+    passwordFile = open(SETTINGS_FILE, 'wb')
+    chars = list(password)
+    total = 133
+    for c in chars:
+        total *= ord(c)
+        total += ord(c)
+        total %= 128
+        hexData = hex(total)[2:].zfill(2)
+        passwordFile.write(hexData.encode('utf-8'))
+    passwordFile.close()
         
 def main():
     global passwordHash
@@ -195,10 +200,13 @@ def main():
         passwordFile = open(SETTINGS_FILE, 'rb')
         passwordFile.close()
     except: 
-        root=Tk()
-        root.wm_title("Password")
-        m=mainWindow(root)
-        root.mainloop()
+        if platform.system() == 'Windows':
+            root=Tk()
+            root.wm_title("Password")
+            m=mainWindow(root)
+            root.mainloop()
+        else:
+            savePassword(input("Create a Password: "))
 
     try:
         passwordFile = open(SETTINGS_FILE, 'rb')
