@@ -19,6 +19,7 @@ import android.widget.EditText;
 import android.widget.ListView;
 import android.widget.Scroller;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -110,18 +111,21 @@ public class CommandsFragment extends Fragment implements AdapterView.OnItemClic
         mCommands = RealmDB.getInstance().selectCommands();
         if (RealmDB.getInstance().isFirstTime() && mCommands.isEmpty()) { //when user installs app and database does not exist yet then load the preset commands
             //Preset Commands
-            RealmDB.getInstance().create("Left", "key-press.bat {LEFT}", mCommands);
-            RealmDB.getInstance().create("Right", "key-press.bat {RIGHT}", mCommands);
-            RealmDB.getInstance().create("Up", "key-press.bat {UP}", mCommands);
-            RealmDB.getInstance().create("Down", "key-press.bat {DOWN}", mCommands);
-            RealmDB.getInstance().create("Esc", "key-press.bat {ESC}", mCommands);
-            RealmDB.getInstance().create("Space", "key-press.bat \" \"", mCommands);
-            RealmDB.getInstance().create("Enter", "key-press.bat {ENTER}", mCommands);
-            RealmDB.getInstance().create("Alt+Tab", "key-press.bat %{TAB}", mCommands);
-            RealmDB.getInstance().create("Close Program", "key-press.bat %{F4}", mCommands);
+            RealmDB.getInstance().create("Left", "\"./presetCmd/key-press.bat\" {LEFT}", mCommands);
+            RealmDB.getInstance().create("Right", "\"./presetCmd/key-press.bat\" {RIGHT}", mCommands);
+            RealmDB.getInstance().create("Up", "\"./presetCmd/key-press.bat\" {UP}", mCommands);
+            RealmDB.getInstance().create("Down", "\"./presetCmd/key-press.bat\" {DOWN}", mCommands);
+            RealmDB.getInstance().create("Esc", "\"./presetCmd/key-press.bat\" {ESC}", mCommands);
+            RealmDB.getInstance().create("Space", "\"./presetCmd/key-press.bat\" \" \"", mCommands);
+            RealmDB.getInstance().create("Enter", "\"./presetCmd/key-press.bat\" {ENTER}", mCommands);
+            RealmDB.getInstance().create("Alt+Tab", "\"./presetCmd/key-press.bat\" %{TAB}", mCommands);
+            RealmDB.getInstance().create("Close Program", "\"./presetCmd/key-press.bat\" %{F4}", mCommands);
+            RealmDB.getInstance().create("Volume Up", "\"./presetCmd/incVolume.bat\"", mCommands);
+            RealmDB.getInstance().create("Volume Down", "\"./presetCmd/decVolume.bat\"", mCommands);
+            RealmDB.getInstance().create("Mute", "\"./presetCmd/mute.bat\"", mCommands);
             RealmDB.getInstance().create("Open Google", "start \"\" \"www.google.com\"", mCommands);
-            RealmDB.getInstance().create("New Tab", "key-press.bat \"^t\"", mCommands);
-            RealmDB.getInstance().create("Close Tab", "key-press.bat \"^w\"", mCommands);
+            RealmDB.getInstance().create("New Tab", "\"./presetCmd/key-press.bat\" \"^t\"", mCommands);
+            RealmDB.getInstance().create("Close Tab", "\"./presetCmd/key-press.bat\" \"^w\"", mCommands);
             RealmDB.getInstance().create("Open Notepad", "start notepad", mCommands);
             RealmDB.getInstance().create("Open Excel", "start excel", mCommands);
             RealmDB.getInstance().create("Logout Windows", "shutdown -l", mCommands);
@@ -174,6 +178,7 @@ public class CommandsFragment extends Fragment implements AdapterView.OnItemClic
                     RealmDB.getInstance().update(ci);
                     RealmDB.getInstance().close();
                     mAdapter.notifyDataSetChanged();
+                    Toast.makeText(getActivity(), "Command Saved", Toast.LENGTH_SHORT).show();
                 }
             });
             view.findViewById(R.id.command_editor_cancel).setOnClickListener(new View.OnClickListener() {

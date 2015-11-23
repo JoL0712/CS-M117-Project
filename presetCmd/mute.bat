@@ -1,1 +1,0 @@
-nircmd.exe mutesysvolume 2

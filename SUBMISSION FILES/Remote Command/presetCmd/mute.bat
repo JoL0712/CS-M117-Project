@@ -1,0 +1,1 @@
+call %~dp0nircmd.exe mutesysvolume 2
