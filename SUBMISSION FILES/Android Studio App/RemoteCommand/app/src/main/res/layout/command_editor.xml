@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:orientation="vertical" android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#000000"
+    android:id="@+id/command_editor_layout">
+
+    <EditText android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:id="@+id/command_editor_name"
+        android:layout_weight="1"
+        android:textStyle="bold"
+        android:textSize="25sp"
+        android:textColor="#ffffff"
+        android:background="#111111"
+        android:padding="5dp"
+        android:maxLength="50"
+        android:singleLine="true"
+        android:text="Command Name"/>
+
+    <EditText android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:id="@+id/command_editor_script"
+        android:fontFamily="courier"
+        android:textColor="#11ff11"
+        android:text="Command Script"
+        android:inputType="textMultiLine"
+        android:lines="8"
+        android:gravity="top|left"
+        android:scrollbars="vertical"
+        android:padding="5dp"
+        android:layout_weight="100"
+        android:textSize="20sp" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:padding="5dp"
+        android:layout_weight="2">
+        <Button
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:id="@+id/command_editor_save"
+            android:text="Save"
+            android:layout_weight="1"
+            android:textColor="#ffffff"
+            android:background="#0aca00"
+            android:textSize="20sp" />
+        <Button
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:id="@+id/command_editor_cancel"
+            android:text="Cancel"
+            android:layout_weight="1"
+            android:textColor="#ffffff"
+            android:background="#dc0000"
+            android:textSize="20sp" />
+    </LinearLayout>
+
+</LinearLayout>
